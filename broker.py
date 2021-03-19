@@ -2,7 +2,7 @@ import _thread as thread
 from socket import *
 import time
 
-class Broker:  # Commit teste.
+class Broker:
     def __init__(self):
         self.host = '127.0.0.1'
         self.port = 8080
