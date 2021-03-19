@@ -15,7 +15,7 @@ class Broker:
         # Não é necessário chamar s.close().
         # AF_INET é a família de endereços para IPV4 (tupla (host, port)).
         # Com SOCK_STREAM, o protocolo padrão é o TCP.
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        with socket(AF_INET, SOCK_STREAM) as s:
             s.bind((self.host, self.port))
             
             # Habilita o broker a aceitar conexões.
@@ -38,20 +38,6 @@ class Broker:
                     
                     # Manda de volta a mesma mensagem (Não é o que faremos).
                     conn.sendall(data)
-    
-# =============================================================================
-#             # algo não está funcionando na linha abaixo
-#             connection, address = self.sockobj.accept()
-#             print('Listening on port: ', self.port)
-#     
-#             # Inicia nova thread para lidar com o cliente
-#             thread.start_new_thread(self.dealWithClient, (connection, address))
-#     
-#             shouldShutdown = input('Shutdown the broker (Y|N)?: ')
-#             if shouldShutdown.upper() == 'Y':
-#                 print('Broker stoped...')
-#                 self.sockobj.close()
-# =============================================================================
 
 
     def printClient(self):
