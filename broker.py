@@ -5,30 +5,57 @@ import time
 class Broker:
     def __init__(self):
         self.host = '127.0.0.1'
-        self.port = 8080
-        self.sockobj = socket(AF_INET, SOCK_STREAM)
+        self.port = 65432  # 1-65535
+        #self.sockobj = socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def start(self):
         portInput = input("Enter the Broker port number: ")
-        self.port = int(portInput)
-        self.sockobj.bind((self.host, self.port))
-        self.sockobj.listen(1)
-
-        # algo não está funcionando na linha abaixo
-        connection, address = self.sockobj.accept()
-        print('Listening on port: ', self.port)
-
-        # Inicia nova thread para lidar com o cliente
-        thread.start_new_thread(self.dealWithClient, (connection, address))
-
-        shouldShutdown = input('Shutdown the broker (Y|N)?: ')
-        if shouldShutdown == 'Y' or shouldShutdown == 'y':
-            print('Broker stoped...')
-            self.sockobj.close()
+        self.port = 65432 if portInput == "" else int(portInput)
+        
+        # Não é necessário chamar s.close().
+        # AF_INET é a família de endereços para IPV4 (tupla (host, port)).
+        # Com SOCK_STREAM, o protocolo padrão é o TCP.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((self.host, self.port))
+            
+            # Habilita o broker a aceitar conexões.
+            # Parâmetro: número limite de conexões recusadas para que o servidor recuse quaisquer novas conexões.
+            s.listen()
+            
+            # Bloqueia a execução e espera por novas conexões.
+            # Retorna a conexão (socket do cliente) e uma tupla (host, port) - para IPV4.
+            conn, addr = s.accept()
+            with conn:  # Socket para comunicação com o cliente.
+                print('Connected by ', addr)
+                while True:
+                    # Lê a mensagem do cliente.
+                    data = conn.recv(1024)
+                    
+                    # Se a mensagem for vazia, a conexão é terminada.
+                    # Como está no contexto do 'with', o socket é automaticamente fechado.
+                    if not data:
+                        break
+                    
+                    # Manda de volta a mesma mensagem (Não é o que faremos).
+                    conn.sendall(data)
+    
+# =============================================================================
+#             # algo não está funcionando na linha abaixo
+#             connection, address = self.sockobj.accept()
+#             print('Listening on port: ', self.port)
+#     
+#             # Inicia nova thread para lidar com o cliente
+#             thread.start_new_thread(self.dealWithClient, (connection, address))
+#     
+#             shouldShutdown = input('Shutdown the broker (Y|N)?: ')
+#             if shouldShutdown.upper() == 'Y':
+#                 print('Broker stoped...')
+#                 self.sockobj.close()
+# =============================================================================
 
 
     def printClient(self):
-        return "Mensagem do cliente: "
+        return "Client message: "
 
     def dealWithClient(self, connection, answer):
         # Simula atividade no bloco
@@ -38,5 +65,5 @@ class Broker:
         connection.send(answer.encode())
         connection.close
 
-Broker = Broker()
-Broker.start()
+broker = Broker()
+broker.start()
