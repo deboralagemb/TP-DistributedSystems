@@ -68,7 +68,7 @@ while True:
     # Retorna lista de tuplas (key, events) para cada socket.
     # Se key.data == None, então é um socket do client.
     
-    events = sel.select(1)  # timeout em segundos [Float].
+    events = sel.select(timeout=1)  # timeout em segundos [Float].
     for key, mask in events:
         if key.data is None:
             accept_wrapper(key.fileobj)

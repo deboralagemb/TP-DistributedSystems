@@ -21,6 +21,8 @@ def start_connections(host, port, num_conns):
         print('starting connection', connid, 'to', server_addr)
         sock = socket(AF_INET, SOCK_STREAM)
         sock.setblocking(False)
+        
+        # Ao contrrário de connect(), não lança um IO Exception.
         sock.connect_ex(server_addr)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(connid=connid,
@@ -65,7 +67,7 @@ start_connections(host, port, num_conns)
 while True:
     # select() NÃO FUNCIONA BEM NO WINDOWS pois dá erro no atributo 'timeout'.
     # O problema é só no Windows, porém os sockets são recebidos e enviados normalmente.
-    events = sel.select(1)  # timeout em segundos [Float].
+    events = sel.select(timeout=1)  # timeout em segundos [Float].
     for key, mask in events:
         service_connection(key, mask)
 
