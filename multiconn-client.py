@@ -40,9 +40,15 @@ def service_connection(key, mask):
         if recv_data:
             print('received', repr(recv_data), 'from connection', data.connid)
             data.recv_total += len(recv_data)
+            
+        # Como o server retorna a mesma mensagem, aqui apenas verifica o tamanho da mensagem de retorno (data.recv_total == data.msg_total).
         if not recv_data or data.recv_total == data.msg_total:
             print('closing connection', data.connid)
             sel.unregister(sock)
+            
+            # O servidor detecta este fechamento e também fecha do lado dele.
+            # Caso ahja erro no cliente e ele não feche a conexão, permanecerá sempre aberto no server.
+            # Isto deve ser tratado colocando um timeout no lado do servidor.
             sock.close()
             
     if mask & selectors.EVENT_WRITE:
