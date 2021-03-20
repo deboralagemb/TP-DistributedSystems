@@ -11,6 +11,8 @@ class Broker:
     def start(self):
         portInput = input("Enter the Broker port number: ")
         self.port = 8080 if portInput == "" else int(portInput)
+        print("Default port number selected: " + str(self.port)) if portInput == "" else {}
+        print("Listening...", end="\n\n")
         
         # Não é necessário chamar s.close().
         # AF_INET é a família de endereços para IPV4 (tupla (host, port)).
@@ -42,16 +44,7 @@ class Broker:
                     # Manda de volta a mesma mensagem (Não é o que faremos).
                     # Retorna 'None' em caso de sucesso.
                     conn.sendall(data)
-
-
-    def dealWithClient(self, connection, answer):
-        # Simula atividade no bloco
-        data = connection.recv(1024)
-        print (self.printClient(), data.decode())
-        time.sleep(1)
-        connection.send(answer.encode())
-        connection.close
-
+                    
 
 broker = Broker()
 broker.start()

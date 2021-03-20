@@ -9,15 +9,15 @@ class Client:
 
     def start(self):      
         with socket(AF_INET, SOCK_STREAM) as s:
-            #portInput = input("Enter the Broker port number: ")
-            #self.port = self.port if portInput == "" else int(portInput)
+            portInput = input("Connect with Broker on port number: ")
+            self.port = self.port if portInput == "" else int(portInput)
             
             s.connect((self.host, self.port))
             s.sendall(b'Hello, world')
             
             data = s.recv(1024)
         
-        print('Received', repr(data))
+        print('\nReceived', repr(data))
 
 client = Client()
 client.start()
