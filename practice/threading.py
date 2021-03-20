@@ -1,0 +1,50 @@
+import logging
+import threading
+import time
+import concurrent.futures
+
+class Resource:
+    def __init__(self):
+        self.value = 0
+
+    def update(self, name):
+        logging.info("Thread %s: starting update", name)
+        local_copy = self.value
+        local_copy += 1
+        time.sleep(0.1)
+        self.value = local_copy
+        logging.info("Thread %s: finishing update", name)
+
+
+def thread_function(name):
+    logging.info("Thread %s: starting", name)
+    time.sleep(2)
+    logging.info("Thread %s: finishing", name)
+
+if __name__ == "__main__":
+    format = "%(asctime)s: %(message)s"
+    logging.basicConfig(format=format, level=logging.INFO,
+                        datefmt="%H:%M:%S")
+    
+    resource = Resource()
+    logging.info("Testing update. Starting value is %d.", resource.value)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        for index in range(2):
+            executor.submit(resource.update, index)
+    
+    logging.info("Testing update. Ending value is %d.", resource.value)
+    
+# =============================================================================
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+#         executor.map(thread_function, range(3))  # Starting multiple threads
+# =============================================================================
+
+# =============================================================================
+#     logging.info("Main    : before creating thread")
+#     x = threading.Thread(target=thread_function, args=(1,))
+#     logging.info("Main    : before running thread")
+#     x.start()
+#     logging.info("Main    : wait for the thread to finish")
+#     x.join()
+#     logging.info("Main    : all done")
+# =============================================================================
