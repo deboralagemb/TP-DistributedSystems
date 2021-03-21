@@ -94,8 +94,8 @@ class Client:
             
             event = threading.Event()
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                executor.submit(self.listen(), s, event)
-                executor.submit(self.request(), s, event)
+                executor.submit(self.listen, s, event)
+                executor.submit(self.request, s, event)
                 
                 time.sleep(duracao)  # Tempo da aplicação.
                 event.set()
