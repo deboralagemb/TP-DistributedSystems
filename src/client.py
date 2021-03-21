@@ -92,7 +92,7 @@ class Client:
                         
                         try:
                             s.connect((self.broker_host, self.broker_port))
-                            msg = pickle.dumps(self.name + ' -release -var-X')
+                            msg = pickle.dumps(self.name + ' -release -var-X %s %s' % (self._host, self._port))
                             s.sendall(msg)
                             self.requested = False
                             

@@ -22,14 +22,14 @@ class Broker:
     def sendMessageToClients(self, s):
         print(self.queue)
         with self._lock:  # Lock queue.
-            for client in self.queue:  # Manda a queue para todos os clientes.
+            for client_name in self.clients:  # Manda a queue para todos os clientes.
                 print('enviando para: ', end='')
-                print(self.queue[client]['host'], self.queue[client]['port'])
-                s.connect((self.queue[client]['host'], self.queue[client]['port']))
+                print(self.clients[client_name]['host'], self.clients[client_name]['port'])
+                s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))                
                 print('conectado!')
                 retorno = pickle.dumps(self.queue)
                 s.sendall(retorno)
-        
+    
     def resolveMsg(self, msg, conn, addr, s):
         print('Resolvendo cliente...')
         
@@ -57,9 +57,7 @@ class Broker:
             self.sendMessageToClients(s)
                 
         elif action == '-release':
-            if len(self.queue) == 0:
-                conn.sendall(pickle.dumps('toma no cu'))
-            elif self.queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
+            if self.queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
                 self.queue.pop(0)
                 self.sendMessageToClients(s)
             else:
