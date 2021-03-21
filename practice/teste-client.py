@@ -1,6 +1,7 @@
 import _thread as thread
-from socket import *
+import socket
 import time
+import pickle
 
 class Client:
     def __init__(self):
@@ -8,14 +9,19 @@ class Client:
         self.port = 8080         # The port used by the server
 
     def start(self):      
-        with socket(AF_INET, SOCK_STREAM) as s:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             portInput = input("Connect with Broker on port number: ")
             self.port = self.port if portInput == "" else int(portInput)
             try:
                 s.connect((self.host, self.port))
-                s.sendall(b'Hello, world')                
-                data = s.recv(1024)
-                print('\nReceived', repr(data))
+                print(self.host, self.port)
+                tmp = pickle.dumps('Felipe -release -var-X 127.0.0.1 8081')
+                print(tmp)
+                s.sendall(tmp)                
+                data = s.recv(4096)
+                print(data)
+                tmp = pickle.loads(data)
+                print('\nReceived', repr(tmp))
                 
             except ConnectionRefusedError:
                 print("Connection refused.")

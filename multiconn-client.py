@@ -64,7 +64,6 @@ def service_connection(key, mask):
 
 start_connections(host, port, num_conns)
 
-
 # select() NÃO FUNCIONA BEM NO WINDOWS pois dá erro no atributo 'timeout'.
 # O problema é só no Windows, porém os sockets são recebidos e enviados normalmente.
 try:

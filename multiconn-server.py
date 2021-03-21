@@ -80,10 +80,11 @@ while True:
         pass
     
     except KeyboardInterrupt:
+        #lsock.shutdown(1)
+        lsock.close()  # Libera a porta.
         break
     
-#lsock.shutdown(1)
-lsock.close()  # Libera a porta.
+
 
 
 
