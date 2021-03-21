@@ -6,13 +6,19 @@ import concurrent.futures
 class Resource:
     def __init__(self):
         self.value = 0
+        self._lock = threading.Lock()
 
     def update(self, name):
         logging.info("Thread %s: starting update", name)
-        local_copy = self.value
-        local_copy += 1
-        time.sleep(0.1)
-        self.value = local_copy
+        logging.debug("Thread %s about to lock", name)
+        with self._lock:
+            logging.debug("Thread %s has lock", name)
+            local_copy = self.value  # 'Thread-safe' - variáveis locais em uma função são seguras em threads, pois cópias dela serão feitas.
+            local_copy += 1
+            time.sleep(0.1)
+            self.value = local_copy
+            logging.debug("Thread %s about to release lock", name)
+        logging.debug("Thread %s after release", name)
         logging.info("Thread %s: finishing update", name)
 
 
@@ -33,7 +39,10 @@ if __name__ == "__main__":
             executor.submit(resource.update, index)
     
     logging.info("Testing update. Ending value is %d.", resource.value)
-    
+    logging.getLogger().setLevel(logging.DEBUG)
+
+
+
 # =============================================================================
 #     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
 #         executor.map(thread_function, range(3))  # Starting multiple threads
@@ -48,3 +57,20 @@ if __name__ == "__main__":
 #     x.join()
 #     logging.info("Main    : all done")
 # =============================================================================
+
+
+# =============================================================================
+# # Serialization example
+# 
+# import numpy as np
+# import pickle
+# 
+# # Serializing
+# arr = np.array([ [1, 2, 3], [4, 5, 6], [7, 8, 9] ])
+# arr = pickle.dumps(arr)
+# print(arr)
+# 
+# # Deserializing
+# print(pickle.loads(arr))
+# =============================================================================
+

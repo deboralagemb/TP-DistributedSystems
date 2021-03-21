@@ -22,7 +22,7 @@ def start_connections(host, port, num_conns):
         sock = socket(AF_INET, SOCK_STREAM)
         sock.setblocking(False)
         
-        # Ao contrrário de connect(), não lança um IO Exception.
+        # Ao contrário de connect(), não lança um IO Exception.
         sock.connect_ex(server_addr)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         data = types.SimpleNamespace(connid=connid,
@@ -49,7 +49,7 @@ def service_connection(key, mask):
             sel.unregister(sock)
             
             # O servidor detecta este fechamento e também fecha do lado dele.
-            # Caso ahja erro no cliente e ele não feche a conexão, permanecerá sempre aberto no server.
+            # Caso haja erro no cliente e ele não feche a conexão, permanecerá sempre aberto no server.
             # Isto deve ser tratado colocando um timeout no lado do servidor.
             sock.close()
             
@@ -64,12 +64,16 @@ def service_connection(key, mask):
 
 start_connections(host, port, num_conns)
 
-while True:
-    # select() NÃO FUNCIONA BEM NO WINDOWS pois dá erro no atributo 'timeout'.
-    # O problema é só no Windows, porém os sockets são recebidos e enviados normalmente.
+
+# select() NÃO FUNCIONA BEM NO WINDOWS pois dá erro no atributo 'timeout'.
+# O problema é só no Windows, porém os sockets são recebidos e enviados normalmente.
+try:
     events = sel.select(timeout=1)  # timeout em segundos [Float].
     for key, mask in events:
         service_connection(key, mask)
+        
+except OSError:
+    pass
 
 
 

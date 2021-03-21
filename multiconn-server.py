@@ -66,11 +66,33 @@ while True:
     
     # Bloqueia até que tenha sockets prontos para I/O.
     # Retorna lista de tuplas (key, events) para cada socket.
-    # Se key.data == None, então é um socket do client.
+    # Se key.data == None, então espera um socket do client.
     
-    events = sel.select(timeout=1)  # timeout em segundos [Float].
-    for key, mask in events:
-        if key.data is None:
-            accept_wrapper(key.fileobj)
-        else:
-            service_connection(key, mask)
+    try:
+        events = sel.select(timeout=1)  # timeout em segundos [Float].
+        for key, mask in events:
+            if key.data is None:
+                accept_wrapper(key.fileobj)
+            else:
+                service_connection(key, mask)
+                
+    except OSError:
+        pass
+    
+    except KeyboardInterrupt:
+        break
+    
+#lsock.shutdown(1)
+lsock.close()  # Libera a porta.
+
+
+
+# =============================================================================
+# # Caso a porta não esteja liberada por um erro do programa:
+# from psutil import process_iter
+# from signal import SIGTERM # or SIGKILL
+# for proc in process_iter():
+#     for conns in proc.connections(kind='inet'):
+#         if conns.laddr.port == port:  # ex.: 8080
+#             proc.send_signal(SIGTERM) # or SIGKILL
+# =============================================================================
