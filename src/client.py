@@ -71,10 +71,19 @@ class Client:
         while not event.is_set() and not self.terminate:
             if not self.hold:
                 proximo = self.queue[0].split()  # Ex.: ['Débora', '-acquire', '-var-X']
+                
                 if proximo[0] == self.name_s and proximo[1] == '-acquire':
                     time.sleep(random.uniform(0.1, 0.3))  # Faça algo com var-X
                     s.connect((self.broker_host, self.broker_port))
                     s.sendall(self.name + b' -release -var-X')
+                    self.requested = False
+                    
+                elif not self.requested:  # Se já não mandou um 'acquire'.
+                    aleatorio = random.randint(0, 99)
+                    if aleatorio < 10:
+                        s.connect((self.broker_host, self.broker_port))
+                        s.sendall(self.name + b' -acquire -var-X')
+                        self.requested = True
                         
         logging.info("Closing request thread.")
         
