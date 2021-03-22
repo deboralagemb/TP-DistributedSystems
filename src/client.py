@@ -1,8 +1,5 @@
-import _thread as thread
 import threading
-import logging
 import concurrent.futures
-import numpy as np
 import socket
 import time
 import random
@@ -106,7 +103,8 @@ class Client:
 
     def start(self):
         
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_listen, \
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_request:
             portInput = input("Connect with BROKER on port number: ")
             self.broker_port = self.broker_port if portInput == "" else int(portInput)
             
@@ -119,8 +117,8 @@ class Client:
             
             event = threading.Event()
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                executor.submit(self.listen, s, event)  # Thread para escutar o broker.
-                executor.submit(self.request, s, event)  # Thread para mandar mensagem para o broker.
+                executor.submit(self.listen, s_listen, event)  # Thread para escutar o broker.
+                executor.submit(self.request, s_request, event)  # Thread para mandar mensagem para o broker.
                 
                 time.sleep(duracao)  # Tempo da aplicação.
                 event.set()
