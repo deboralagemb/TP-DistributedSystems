@@ -16,16 +16,15 @@ def port_in_use(port, obj):
     
 
 class Client:
-    def __init__(self):
+    def __init__(self, name, host, port):
+        self.name = name  # Único.
         self.broker_host = '127.0.0.1'
         self.broker_port = 8080
-        self._host = '127.0.0.1'
-        self._port = 8081
+        self._host = host
+        self._port = port
         #self._lock = threading.Lock()
-        #self.acquired = False
         self.requested = False
         self.hold = False  # Recebendo informação.
-        self.name = 'Débora'  # Único.
         self.queue = []  # Primeiro da fila = próxima execução.
         self.terminate = False
 
@@ -89,7 +88,7 @@ class Client:
                     elif len(self.queue) > 0:
                         proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
                         if proximo == self.name:
-                            print('>>> Estou utilizando o recurso...')
+                            print('>>> %s: Estou utilizando o recurso...' % self.name)
                             time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
                             #print('Terminei!')
                             
@@ -113,15 +112,17 @@ class Client:
 
     def start(self):
         
-        portInput = input("Connect with BROKER on port number: ")
-        self.broker_port = self.broker_port if portInput == "" else int(portInput)
-        
-        portInput = input("CLIENT will listen on port number: ")
-        while port_in_use(portInput, self):
-            portInput = input("Port already in use, provide a new port number: ")
-        print('')
-        
-        self._port = int(portInput)
+# =============================================================================
+#         portInput = input("Connect with BROKER on port number: ")
+#         self.broker_port = self.broker_port if portInput == "" else int(portInput)
+#         
+#         portInput = input("CLIENT will listen on port number: ")
+#         while port_in_use(portInput, self):
+#             portInput = input("Port already in use, provide a new port number: ")
+#         print('')
+#         
+#         self._port = int(portInput)
+# =============================================================================
         
         event = threading.Event()
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -132,10 +133,18 @@ class Client:
             event.set()
 
 
-client = Client()
-client.start()
+with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+    executor.submit( Client('Débora', '127.0.0.1', 8081).start )
+    executor.submit( Client('Felipe', '127.0.0.1', 8082).start )
+    executor.submit( Client('Gabriel', '127.0.0.1', 8083).start )
+
+
 
 #logging.getLogger().setLevel(logging.DEBUG)  # Imprimir os debugs.
+
+
+
+
 
 
 def port(port):

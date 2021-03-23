@@ -23,10 +23,10 @@ class Broker:
         #print(self.queue)
         with self._lock:  # Lock queue.
             for client_name in self.clients:  # Manda a queue para todos os clientes.
-                #print('enviando para: ', end='')
-                #print(self.clients[client_name]['host'], self.clients[client_name]['port'])
+                print('enviando para: ', end='')
+                print(self.clients[client_name]['host'], self.clients[client_name]['port'])
                 s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))                
-                #print('conectado!')
+                print('conectado!')
                 retorno = pickle.dumps(self.queue)
                 s.sendall(retorno)
                 #print('===== QUEUE ENVIADA!', self.queue)
@@ -39,7 +39,7 @@ class Broker:
             self.count += 1
             
         msg = pickle.loads(msg)
-        print('%3s. %s' % (self.count, " ".join(msg.split()[:-2])))  # Esta mensagem pode estar fora de sincronia.
+        print('%3s. %s' % (self.count, " ".join(msg.split()[:-2])), end='  ')  # Esta mensagem pode estar fora de sincronia.
         
         msg = msg.split() # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
@@ -58,13 +58,15 @@ class Broker:
         #print('mensagem completa:', msg)
         
         if action == '-acquire':
-            self.queue.append(_id)  # Põe o nome do cliente no fim da lista.            
+            self.queue.append(_id)  # Põe o nome do cliente no fim da lista.
+            print(self.queue)
             self.sendMessageToClients(s)
                 
         elif action == '-release':
             if len(self.queue) > 0:
                 if self.queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
                     self.queue.pop(0)
+                    print(self.queue)
                     #print('Queue atualizada!', self.queue)
                         
                     self.sendMessageToClients(s)
