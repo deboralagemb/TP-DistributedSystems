@@ -39,21 +39,20 @@ class Client:
         while not event.is_set() and not self.terminate:  # Tempo da main thread / mensagem de término do broker.
             print('Esperando mensagem')
             conn, addr = s.accept()  # (!) Bloqueia a execução!
+            data = conn.recv(4096)
             print('Recebida!')
-            
-            with conn:
-                print('Connected with Broker %s, receiving message' % addr)                
-                self.hold = True  # Aguarde enquanto a queue é totalmente recebida (Talvez desnecessária, já que existe self._lock).
-                data = conn.recv(4096)
+            print('Connected with Broker %s %s, receiving message ' % (addr[0], addr[1]))
 
-                msg = pickle.loads(data)  # Recebe o array (queue) do Broker / mensagem de término.
-                if msg == 'terminate':
-                    self.terminate = True
-                    continue
-                
-                self.queue = msg
-                self.hold = False
-                print('Queue received.', self.queue)
+            self.hold = True  # Aguarde enquanto a queue é totalmente recebida (Talvez desnecessária, já que existe self._lock).
+
+            msg = pickle.loads(data)  # Recebe o array (queue) do Broker / mensagem de término.
+            if msg == 'terminate':
+                self.terminate = True
+                continue
+
+            self.queue = msg
+            self.hold = False
+            print('Queue received.', self.queue)
                 
         print("Closing listen thread.")
         

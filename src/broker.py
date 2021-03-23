@@ -75,7 +75,8 @@ class Broker:
         self.port = 8080 if portInput == "" else int(portInput)
         print("Default port number selected: " + str(self.port)) if portInput == "" else {}
         
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s, \
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM) as t:
             s.bind((self.host, self.port))
             
             s.listen()
@@ -85,7 +86,7 @@ class Broker:
                 try:
                     print('Esperando contato...')
                     conn, addr = s.accept()
-                    self.dealtWithClient(conn, addr, s)
+                    self.dealtWithClient(conn, addr, t)
                         
                 except KeyboardInterrupt:
                     print('Exiting.')
