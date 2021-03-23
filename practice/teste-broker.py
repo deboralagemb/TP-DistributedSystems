@@ -39,6 +39,7 @@ class Broker:
                             data += tmp
                             if not tmp:
                                 break
+                            print('Received', pickle.loads(data))
                             conn.send(data)
                             
                 except (ConnectionResetError, ConnectionAbortedError):

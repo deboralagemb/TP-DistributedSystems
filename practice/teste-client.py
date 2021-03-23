@@ -16,10 +16,10 @@ class Client:
                 s.connect((self.host, self.port))
                 print(self.host, self.port)
                 tmp = pickle.dumps('Felipe -release -var-X 127.0.0.1 8081')
-                print(tmp)
-                s.sendall(tmp)                
+                #print(tmp)
+                s.sendall(tmp)
                 data = s.recv(4096)
-                print(data)
+                #print(data)
                 tmp = pickle.loads(data)
                 print('\nReceived', repr(tmp))
                 
