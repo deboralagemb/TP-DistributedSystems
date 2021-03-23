@@ -20,26 +20,26 @@ class Broker:
         
 
     def sendMessageToClients(self, s):
-        print(self.queue)
+        #print(self.queue)
         with self._lock:  # Lock queue.
             for client_name in self.clients:  # Manda a queue para todos os clientes.
-                print('enviando para: ', end='')
-                print(self.clients[client_name]['host'], self.clients[client_name]['port'])
+                #print('enviando para: ', end='')
+                #print(self.clients[client_name]['host'], self.clients[client_name]['port'])
                 s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))                
                 #print('conectado!')
                 retorno = pickle.dumps(self.queue)
                 s.sendall(retorno)
-                print('===== QUEUE ENVIADA!')
+                #print('===== QUEUE ENVIADA!', self.queue)
     
     
     def resolveMsg(self, msg, conn, addr, s):
-        print('Resolvendo cliente...')
+        #print('Resolvendo cliente...')
         
         with self._lock:
             self.count += 1
             
         msg = pickle.loads(msg)
-        print('%3s. %s' % (self.count, msg))  # Esta mensagem pode estar fora de sincronia.
+        print('%3s. %s' % (self.count, " ".join(msg.split()[:-2])))  # Esta mensagem pode estar fora de sincronia.
         
         msg = msg.split() # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
@@ -62,17 +62,21 @@ class Broker:
             self.sendMessageToClients(s)
                 
         elif action == '-release':
-            if self.queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
-                self.queue.pop(0)
-                print('Queue atualizada!', self.queue)
-                self.sendMessageToClients(s)
+            if len(self.queue) > 0:
+                if self.queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
+                    self.queue.pop(0)
+                    #print('Queue atualizada!', self.queue)
+                        
+                    self.sendMessageToClients(s)
+                else:
+                    print('ERRO CABULOSO! Requerente: %s | Fila: %s' % (_id, self.queue[0]))
             else:
-                print('ERRO CABULOSO! Requerente: %s | Fila: %s' % (_id, self.queue[0]))
+                print('>>> Tentativa de release com queue vazia!')
                 
     
     def dealtWithClient(self, conn, addr):
         with conn, socket.socket(socket.AF_INET, socket.SOCK_STREAM) as t:
-            print('Connected by ', addr)
+            #print('Connected by ', addr)
             data = conn.recv(4096)  # Recebe a mensagem do cliente.
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
                 executor.submit(self.resolveMsg, data, conn, addr, t)  # Lança a thread para o cliente.
@@ -82,20 +86,18 @@ class Broker:
         portInput = input("Enter the Broker port number: ")
         self.port = 8080 if portInput == "" else int(portInput)
         print("Default port number selected: " + str(self.port)) if portInput == "" else {}
-        
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((self.host, self.port))
         while True:
             try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind((self.host, self.port))
-                    
-                    s.listen()
-                    #print("Listening...", end="\n\n")
-                    print('Esperando contato...')
-                    conn, addr = s.accept()
-                    self.dealtWithClient(conn, addr)
-                    
+                s.listen()
+                #print('Esperando contato...')
+                conn, addr = s.accept()
+                self.dealtWithClient(conn, addr)
+
             except KeyboardInterrupt:
                 print('Exiting.')
+                s.close()
                 break
 
 

@@ -36,7 +36,7 @@ class Client:
         
         while not event.is_set() and not self.terminate:  # Tempo da main thread / mensagem de término do broker.
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                print("Listening on [%s:%s]" % (self._host, self._port))
+                #print("Listening on [%s:%s]" % (self._host, self._port))
                 s.bind((self._host, self._port))      
                 s.listen()
                 
@@ -44,8 +44,8 @@ class Client:
                 conn, addr = s.accept()  # (!) Bloqueia a execução!
                 with conn:
                     data = conn.recv(4096)
-                    print('Recebida!')
-                    print('Connected with Broker %s %s, receiving message ' % (addr[0], addr[1]))
+                    #print('Recebida!')
+                    #print('Connected with Broker %s %s, receiving message ' % (addr[0], addr[1]))
         
                     self.hold = True  # Aguarde enquanto a queue é totalmente recebida (Talvez desnecessária, já que existe self._lock).
         
@@ -56,41 +56,42 @@ class Client:
         
                     self.queue = msg
                     self.hold = False
-                    print('Queue received.', self.queue)
+                    print('Queue atualizada:', self.queue)
                 
         print("Closing listen thread.")
         
     
     def request(self, event):
-        print("Entering request thread as %s" % self.name)
+        #print("Entering request thread as %s" % self.name)
         
         while not event.is_set() and not self.terminate:
             
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 if not self.hold:
                     if not self.requested:  # Se já não mandou um 'acquire'.
-                        aleatorio = random.randint(0, 99)
-                        if aleatorio < 10:
-                            try:
-                                print('tentando conexão ', end = '')
-                                print(self.broker_host, self.broker_port)
-                                s.connect((self.broker_host, self.broker_port))
-                                print('conectou')
-                                
-                                # Manda junto informação sobre a porta de escuta.
-                                msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
-                                s.sendall(msg)
-                                self.requested = True
-                                
-                            except ConnectionRefusedError:
-                                print("Connection refused on acquire.")
+                        aleatorio = random.uniform(0.5, 2)
+                        time.sleep(aleatorio)
+                        
+                        try:
+                            #print('tentando conexão ', end = '')
+                            print(self.broker_host, self.broker_port)
+                            s.connect((self.broker_host, self.broker_port))
+                            #print('conectou')
+                            
+                            # Manda junto informação sobre a porta de escuta.
+                            msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
+                            s.sendall(msg)
+                            self.requested = True
+                            
+                        except ConnectionRefusedError:
+                            print("Connection refused on acquire.")
                     
                     elif len(self.queue) > 0:
                         proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
                         if proximo == self.name:
-                            print('Estou utilizando o recurso...')
+                            print('>>> Estou utilizando o recurso...')
                             time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
-                            print('Terminei!')
+                            #print('Terminei!')
                             
                             try:
                                 s.connect((self.broker_host, self.broker_port))
