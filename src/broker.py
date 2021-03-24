@@ -7,7 +7,7 @@ import pickle
 
 class Broker:
     def __init__(self):
-        self.host = '127.0.0.1'
+        self.host = '35.198.9.43'
         self.port = 8080  # 1-65535
         self.clients = {}
         self.queue = []
