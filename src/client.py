@@ -6,6 +6,7 @@ import random
 import pickle
 
 duracao = 10
+socket.setdefaulttimeout(3)
 
 
 def port_in_use(port, obj):
@@ -25,7 +26,7 @@ class Client:
         #self._lock = threading.Lock()
         self.requested = False
         self.hold = False  # Recebendo informação.
-        self.queue = []  # Primeiro da fila = próxima execução.
+        self.queue = None  # Primeiro da fila = próxima execução.
         self.terminate = False
 
         
@@ -33,30 +34,52 @@ class Client:
         
         #print(event.is_set(), self.terminate)
         
-        while not event.is_set() and not self.terminate:  # Tempo da main thread / mensagem de término do broker.
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                #print("Listening on [%s:%s]" % (self._host, self._port))
-                s.bind((self._host, self._port))      
-                s.listen()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            #print("Listening on [%s:%s]" % (self._host, self._port))
+            s.bind((self._host, self._port))
+            s.listen()
+            
+            while not event.is_set() and not self.terminate:  # Tempo da main thread / mensagem de término do broker.
                 
-                print('Esperando mensagem')
-                conn, addr = s.accept()  # (!) Bloqueia a execução!
+                print('\nEsperando mensagem (%s)' % self.name)
+                
+                conn, addr = None, None
+                try:
+                    conn, addr = s.accept()  # (!) Bloqueia a execução!
+                except socket.timeout:
+                    #print('\nsocket.accept timed out on', self.name)
+                    continue
+                
                 with conn:
                     data = conn.recv(4096)
                     #print('Recebida!')
                     #print('Connected with Broker %s %s, receiving message ' % (addr[0], addr[1]))
         
-                    self.hold = True  # Aguarde enquanto a queue é totalmente recebida (Talvez desnecessária, já que existe self._lock).
+                    self.hold = True            # Aguarde enquanto a queue é totalmente recebida (Talvez desnecessária, já que existe self._lock).
         
-                    msg = pickle.loads(data)  # Recebe o array (queue) do Broker / mensagem de término.
+                    msg = pickle.loads(data)    # Recebe o array (queue) do Broker / mensagem de término.
+                    
                     if msg == 'terminate':
                         self.terminate = True
                         continue
-        
-                    self.queue = msg
-                    self.hold = False
-                    print('Queue atualizada:', self.queue)
+                    elif isinstance(msg, list):
+                        if self.queue == None:  # Subscribe.
+                            self.queue = msg
+                            print('Queue atualizada: subscribe')
+                            
+                        elif len(msg) == 1:
+                            if msg[0] == '%pop%':
+                                self.queue.pop(0)
+                                print('Queue atualizada: release')
+                            else:               # Atualização na queue (próximo acquire recebido).
+                                self.queue.append(msg[0])
+                                print('Queue atualizada: acquire')
+                                                        
+                    else:
+                        print('ERRO 01: Mensagem inválida')
                 
+                    self.hold = False
+                    
         print("Closing listen thread.")
         
     
@@ -66,6 +89,7 @@ class Client:
         while not event.is_set() and not self.terminate:
             
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                #print(not self.hold, self.queue)
                 if not self.hold:
                     if not self.requested:  # Se já não mandou um 'acquire'.
                         aleatorio = random.uniform(0.5, 2)
@@ -80,34 +104,38 @@ class Client:
                             # Manda junto informação sobre a porta de escuta.
                             msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
                             s.sendall(msg)
+                            print(self.name)
                             self.requested = True
                             
                         except ConnectionRefusedError:
                             print("Connection refused on acquire.")
                     
-                    elif len(self.queue) > 0:
-                        proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
-                        if proximo == self.name:
-                            print('>>> %s: Estou utilizando o recurso...' % self.name)
-                            time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
-                            #print('Terminei!')
-                            
-                            try:
-                                s.connect((self.broker_host, self.broker_port))
-                                print('>>> Liberando a variável')
-                                msg = pickle.dumps(self.name + ' -release -var-X ' + self._host + ' ' +  str(self._port))
-                                #print('==========================')
-                                s.sendall(msg)
-                                #print('enviado')
-                                self.requested = False
+                    elif self.queue != None:  # Já deu subscribe.                    
+                        if len(self.queue) > 0:
+                            #print(self.name, self.queue)
+                            proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
+                            if proximo == self.name:
+                                print('>>> %s: Estou utilizando o recurso...' % self.name)
+                                time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
+                                #print('Terminei!')
                                 
-                            except ConnectionRefusedError:
-                                print("Connection refused on release.")
+                                try:
+                                    s.connect((self.broker_host, self.broker_port))
+                                    print('>>> Liberando a variável')
+                                    msg = pickle.dumps(self.name + ' -release -var-X ' + self._host + ' ' +  str(self._port))
+                                    #print('==========================')
+                                    s.sendall(msg)
+                                    #print('enviado')
+                                    self.requested = False
+                                    
+                                except ConnectionRefusedError:
+                                    print("Connection refused on release.")
                                 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             print("Closing request thread.")
             s.connect((self.broker_host, self.broker_port))
             s.sendall(pickle.dumps('%s exited' % self.name))  # Manda mensagem final.
+            self.queue = None
         
 
     def start(self):

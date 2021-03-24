@@ -1,10 +1,6 @@
-import _thread as thread
 import socket
 import concurrent.futures
-import queue
-import random
-import time
-import logging
+#import logging
 import threading
 import pickle
 
@@ -17,17 +13,33 @@ class Broker:
         self.queue = []
         self.count = 0
         self._lock = threading.Lock()
-        
 
-    def sendMessageToClients(self, s):
+
+    def sendMessageToClients(self, s, sub, acq):
         #print(self.queue)
         with self._lock:  # Lock queue.
             for client_name in self.clients:  # Manda a queue para todos os clientes.
                 print('enviando para: ', end='')
-                print(self.clients[client_name]['host'], self.clients[client_name]['port'])
-                s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))                
+                #print(self.clients[client_name]['host'], self.clients[client_name]['port'])
+                print('-> ' + client_name)
+                
+                try:
+                    s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))
+                except ConnectionRefusedError:
+                    print("Connection refused on:", client_name, end='')
+                    print(". Trying again...")
+                
                 print('conectado!')
-                retorno = pickle.dumps(self.queue)
+                
+                retorno = b''
+                if client_name == sub:  # Subscribing.
+                    retorno = pickle.dumps(self.queue)  # Manda o array todo.
+                else:
+                    if acq:
+                        retorno = pickle.dumps([self.queue[-1]])  # O último a mandar acquire.
+                    else:
+                        retorno = pickle.dumps(['%pop%'])
+                
                 s.sendall(retorno)
                 #print('===== QUEUE ENVIADA!', self.queue)
     
@@ -39,7 +51,6 @@ class Broker:
             self.count += 1
             
         msg = pickle.loads(msg)
-        print('%3s. %s' % (self.count, " ".join(msg.split()[:-2])), end='  ')  # Esta mensagem pode estar fora de sincronia.
         
         msg = msg.split() # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
@@ -52,6 +63,10 @@ class Broker:
                 pass            
             return
         
+        print('%3s. %s' % (self.count, " ".join(msg[:-2])), end='  ')  # Esta mensagem pode estar fora de sincronia.
+        
+        sub = _id if _id not in self.clients else ''  # Se é o primeiro contato do cliente, mande todo o array (subscribe).
+        
         self.clients[_id] = {'host': msg[-2], 'port': int(msg[-1])}  # 'id': [host, port]        
         action = msg[1]
         
@@ -60,7 +75,7 @@ class Broker:
         if action == '-acquire':
             self.queue.append(_id)  # Põe o nome do cliente no fim da lista.
             print(self.queue)
-            self.sendMessageToClients(s)
+            self.sendMessageToClients(s, sub, True)
                 
         elif action == '-release':
             if len(self.queue) > 0:
@@ -69,7 +84,7 @@ class Broker:
                     print(self.queue)
                     #print('Queue atualizada!', self.queue)
                         
-                    self.sendMessageToClients(s)
+                    self.sendMessageToClients(s, sub, False)
                 else:
                     print('ERRO CABULOSO! Requerente: %s | Fila: %s' % (_id, self.queue[0]))
             else:
@@ -80,8 +95,9 @@ class Broker:
         with conn, socket.socket(socket.AF_INET, socket.SOCK_STREAM) as t:
             #print('Connected by ', addr)
             data = conn.recv(4096)  # Recebe a mensagem do cliente.
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                executor.submit(self.resolveMsg, data, conn, addr, t)  # Lança a thread para o cliente.
+            if data:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    executor.submit(self.resolveMsg, data, conn, addr, t)  # Lança a thread para o cliente.
             
 
     def start(self):
