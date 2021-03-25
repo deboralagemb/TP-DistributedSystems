@@ -79,7 +79,7 @@ while True:
     except OSError:
         pass
     
-    except KeyboardInterrupt:
+    except:
         #lsock.shutdown(1)
         lsock.close()  # Libera a porta.
         break

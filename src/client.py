@@ -8,7 +8,6 @@ import pickle
 duracao = 10
 socket.setdefaulttimeout(3)
 
-
 def port_in_use(port, obj):
     if port == "":
         return True
@@ -30,12 +29,13 @@ class Client:
         self.terminate = False
 
         
-    def listen(self, event):        
+    def listen(self, event):
         
         #print(event.is_set(), self.terminate)
         
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             #print("Listening on [%s:%s]" % (self._host, self._port))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self._host, self._port))
             s.listen()
             
@@ -65,20 +65,21 @@ class Client:
                     elif isinstance(msg, list):
                         if self.queue == None:  # Subscribe.
                             self.queue = msg
-                            print('Queue atualizada: subscribe')
+                            print('\n[%s]: Queue atualizada: ação subscribe %s' % (self.name, self.queue))
                             
                         elif len(msg) == 1:
                             if msg[0] == '%pop%':
                                 self.queue.pop(0)
-                                print('Queue atualizada: release')
+                                print('\n[%s]: Queue atualizada: ação release %s' % (self.name, self.queue))
                             else:               # Atualização na queue (próximo acquire recebido).
                                 self.queue.append(msg[0])
-                                print('Queue atualizada: acquire')
+                                print('\n[%s]: Queue atualizada: ação acquire %s' % (self.name, self.queue))
                                                         
                     else:
                         print('ERRO 01: Mensagem inválida')
                 
                     self.hold = False
+                    conn.close()
                     
         print("Closing listen thread.")
         
@@ -89,6 +90,8 @@ class Client:
         while not event.is_set() and not self.terminate:
             
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                
                 #print(not self.hold, self.queue)
                 if not self.hold:
                     if not self.requested:  # Se já não mandou um 'acquire'.
@@ -104,7 +107,9 @@ class Client:
                             # Manda junto informação sobre a porta de escuta.
                             msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
                             s.sendall(msg)
+                            
                             print(self.name)
+                            
                             self.requested = True
                             
                         except ConnectionRefusedError:
@@ -121,9 +126,8 @@ class Client:
                                 
                                 try:
                                     s.connect((self.broker_host, self.broker_port))
-                                    print('>>> Liberando a variável')
                                     msg = pickle.dumps(self.name + ' -release -var-X ' + self._host + ' ' +  str(self._port))
-                                    #print('==========================')
+                                    print('%s liberou o recurso' % self.name)
                                     s.sendall(msg)
                                     #print('enviado')
                                     self.requested = False
@@ -132,6 +136,7 @@ class Client:
                                     print("Connection refused on release.")
                                 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             print("Closing request thread.")
             s.connect((self.broker_host, self.broker_port))
             s.sendall(pickle.dumps('%s exited' % self.name))  # Manda mensagem final.
