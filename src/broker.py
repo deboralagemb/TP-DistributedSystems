@@ -24,11 +24,7 @@ class Broker:
         
     def sendMessageToClients(self, sub, acq):        
         with self._lock:  # Lock queue.            
-            for client_name in self.clients:  # Manda a queue para todos os clientes.
-                #print('enviando para: ', end='')
-                #print(self.clients[client_name]['host'], self.clients[client_name]['port'])
-                #print('-> ' + client_name, self.queue)
-                
+            for client_name in self.clients:  # Manda a queue para todos os clientes.                
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     
@@ -41,29 +37,31 @@ class Broker:
                         else:
                             retorno = pickle.dumps(['%pop%'])
                             
+                    #print('enviando para %s' % client_name)
                     
                     try:
                         s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))
+                        s.sendall(retorno)
                     except ConnectionRefusedError:
-                        print("Connection refused on:", client_name, end=' ')
+                        print("Connection REFUSED on:", client_name, end=' ')
                         print(pickle.loads(retorno))
                     
-                    s.sendall(retorno)
         
         
     def resolveMsg(self, msg):
-        #print('Resolvendo cliente...')
+        #print('Resolvendo cliente...')        
         
         with self._lock:
             self.count += 1
             
         msg = pickle.loads(msg)
         
+        
         msg = msg.split() # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
         
         if msg[1] == 'exited':
-            self.clients.pop(_id)
+            self.clients.pop(_id)  # Retira o cliente do conjunto de clientes.
             print('%s saiu' % _id)
             try:
                 self.queue.remove(_id)
@@ -73,15 +71,17 @@ class Broker:
         
         print('%3s. %s' % (self.count, " ".join(msg[:-2])), end='  ')  # Esta mensagem pode estar fora de sincronia.
         
-        sub = _id if _id not in self.clients else ''  # Se é o primeiro contato do cliente, mande todo o array (subscribe).
-        
+        sub = _id if _id not in self.clients else ''  # Se é o primeiro contato do cliente, mande todo o array (subscribe).        
         self.clients[_id] = {'host': msg[-2], 'port': int(msg[-1])}  # 'id': [host, port]        
         action = msg[1]
         
         if action == '-acquire':
-            self.queue.append(_id)  # Põe o nome do cliente no fim da lista.
-            print(self.queue)
-            self.sendMessageToClients(sub, True)
+            if _id in self.queue:
+                print('>>> [ERRO] Acquire duplo')
+            else:            
+                self.queue.append(_id)  # Põe o nome do cliente no fim da lista.
+                print(self.queue)
+                self.sendMessageToClients(sub, True)
                 
         elif action == '-release':
             if len(self.queue) > 0:
@@ -92,9 +92,9 @@ class Broker:
                         
                     self.sendMessageToClients(sub, False)
                 else:
-                    print('ERRO CABULOSO! Requerente: %s | Fila: %s' % (_id, self.queue[0]))
+                    print('>>> [ERRO] Release inválido. Requerente: %s | Próximo na fila: %s' % (_id, self.queue[0]))
             else:
-                print('>>> Tentativa de release com queue vazia!')
+                print('>>> [ERRO] Tentativa de release com queue vazia!')
                 
         
     def accept_wrapper(self, sock):
@@ -123,6 +123,7 @@ class Broker:
                 data.outb += recv_data
             else:
                 self.resolveMsg(data.outb)
+                #data.outb = b''
                 
                 #print('closing connection to', data.addr)
                 
@@ -157,6 +158,7 @@ class Broker:
             # Se key.data == None, então espera um socket do client.
             
             try:
+                #print('Escutando...')
                 events = self.sel.select(timeout=selector_timeout)  # timeout em segundos [Float].
                 for key, mask in events:
                     if key.data is None:
