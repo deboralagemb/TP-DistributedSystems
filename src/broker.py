@@ -31,6 +31,7 @@ class Broker:
                     retorno = b''
                     if client_name == sub:  # Subscribing.
                         retorno = pickle.dumps(self.queue)  # Manda o array todo.
+                        print('%s SUBSCRIBED!' % client_name)
                     else:
                         if acq:
                             retorno = pickle.dumps([self.queue[-1]])  # O último a mandar acquire.
@@ -56,13 +57,12 @@ class Broker:
             
         msg = pickle.loads(msg)
         
-        
         msg = msg.split() # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
         
         if msg[1] == 'exited':
             self.clients.pop(_id)  # Retira o cliente do conjunto de clientes.
-            print('%s saiu' % _id)
+            print('\n----------------\n%s saiu\n----------------' % _id)
             try:
                 self.queue.remove(_id)
             except ValueError:
@@ -80,7 +80,7 @@ class Broker:
                 print('>>> [ERRO] Acquire duplo')
             else:            
                 self.queue.append(_id)  # Põe o nome do cliente no fim da lista.
-                print(self.queue)
+                print(self.queue)                
                 self.sendMessageToClients(sub, True)
                 
         elif action == '-release':
@@ -88,7 +88,14 @@ class Broker:
                 if self.queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
                     self.queue.pop(0)
                     print(self.queue)
-                    #print('Queue atualizada!', self.queue)
+                    
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
+                        try:
+                            s.connect((self.clients[_id]['host'], self.clients[_id]['port']))
+                            s.sendall(pickle.dumps('okr'))
+                        except ConnectionRefusedError:
+                            #print('%s NÃO recebeu o OK!' % _id)
+                            pass
                         
                     self.sendMessageToClients(sub, False)
                 else:
