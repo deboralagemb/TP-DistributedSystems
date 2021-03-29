@@ -5,7 +5,7 @@ import time
 import random
 import pickle
 
-duracao = 10
+duracao = 30
 socket.setdefaulttimeout(3)
 
 def port_in_use(port, obj):
@@ -155,9 +155,9 @@ inputClientHost = clientInput[2]
 inputClientPort = clientInput[3]
 inputName = clientInput[4]
 
-with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-    executor.submit(
-        Client(inputName, inputBrokerHost, int(inputBrokerPort), inputClientHost, int(inputClientPort)).start)
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    executor.submit(Client(inputName, inputBrokerHost, int(inputBrokerPort), inputClientHost, int(inputClientPort)).start)
+    executor.submit(Client(inputName+"aa", inputBrokerHost, int(inputBrokerPort), inputClientHost, int(8082)).start)
 
 
 
