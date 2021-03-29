@@ -16,12 +16,12 @@ def port_in_use(port, obj):
     
 
 class Client:
-    def __init__(self, name, host, port):
+    def __init__(self, name, brokerHost, brokerPort, clientHost, clientPort):
         self.name = name  # Único.
-        self.broker_host = '127.0.0.1'
-        self.broker_port = 8080
-        self._host = host
-        self._port = port
+        self.broker_host = brokerHost
+        self.broker_port = brokerPort
+        self._host = clientHost
+        self._port = clientPort
         self._lock = threading.Lock()
         self.requested = False
         self.queue = None  # Primeiro da fila = próxima execução.
@@ -147,10 +147,17 @@ class Client:
             event.set()
 
 
-with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-    executor.submit( Client('Débora', '127.0.0.1', 8081).start )
-    executor.submit( Client('Felipe', '127.0.0.1', 8082).start )
-    executor.submit( Client('Gabriel', '127.0.0.1', 8083).start )
+clientInput = clientInput = input("1 - Digite o ip do Broker\n2 - Digite a porta do broker\n3 - Digite o ip do Cliente\n4 - A porta deste cliente para o broker se comunicar\n5 - E o identificador do cliente\n")
+clientInput = clientInput.split()
+inputBrokerHost = clientInput[0]
+inputBrokerPort = clientInput[1]
+inputClientHost = clientInput[2]
+inputClientPort = clientInput[3]
+inputName = clientInput[4]
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+    executor.submit(
+        Client(inputName, inputBrokerHost, int(inputBrokerPort), inputClientHost, int(inputClientPort)).start)
 
 
 

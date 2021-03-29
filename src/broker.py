@@ -13,9 +13,9 @@ selector_timeout = 3
 
 class Broker:
     
-    def __init__(self):
-        self.host = '127.0.0.1'
-        self.port = 8080  # 1-65535
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
         self.clients = {}
         self.queue = []
         self.count = 0
@@ -150,7 +150,7 @@ class Broker:
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         lsock.bind((self.host, self.port))
         lsock.listen()
-        print('listening on', (host, port))
+        print('listening on', (self.host, self.port))
         
         # Não bloqueará a execução.
         lsock.setblocking(False)
@@ -181,8 +181,13 @@ class Broker:
                 lsock.close()  # Libera a porta.
                 break
 
+input = input("1 - Digite o IP do Broker\n2 - Digite a porta do Broker\n")
+input = input.split()
+inputHost = input[0]
+inputPort = input[1]
+
 if __name__ == "__main__":
-    broker = Broker()
+    broker = Broker(inputHost, int(inputPort))
     broker.start()
 
 
