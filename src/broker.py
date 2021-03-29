@@ -5,6 +5,7 @@ import socket
 import types
 import threading
 import pickle
+import sys
 
 host = '127.0.0.1'
 port = 8080
@@ -181,10 +182,8 @@ class Broker:
                 lsock.close()  # Libera a porta.
                 break
 
-input = input("1 - Digite o IP do Broker\n2 - Digite a porta do Broker\n")
-input = input.split()
-inputHost = input[0]
-inputPort = input[1]
+inputHost = sys.argv[1]
+inputPort = sys.argv[2]
 
 if __name__ == "__main__":
     broker = Broker(inputHost, int(inputPort))

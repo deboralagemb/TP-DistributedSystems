@@ -4,6 +4,7 @@ import socket
 import time
 import random
 import pickle
+import sys
 
 duracao = 30
 socket.setdefaulttimeout(3)
@@ -146,18 +147,15 @@ class Client:
             time.sleep(duracao)  # Tempo da aplicação.
             event.set()
 
-
-clientInput = clientInput = input("1 - Digite o ip do Broker\n2 - Digite a porta do broker\n3 - Digite o ip do Cliente\n4 - A porta deste cliente para o broker se comunicar\n5 - E o identificador do cliente\n")
-clientInput = clientInput.split()
-inputBrokerHost = clientInput[0]
-inputBrokerPort = clientInput[1]
-inputClientHost = clientInput[2]
-inputClientPort = clientInput[3]
-inputName = clientInput[4]
+inputBrokerHost = sys.argv[1]
+inputBrokerPort = sys.argv[2]
+inputClientHost = sys.argv[3]
+inputClientPort = sys.argv[4]
+inputName = sys.argv[5]
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
     executor.submit(Client(inputName, inputBrokerHost, int(inputBrokerPort), inputClientHost, int(inputClientPort)).start)
-    executor.submit(Client(inputName+"aa", inputBrokerHost, int(inputBrokerPort), inputClientHost, int(8082)).start)
+    executor.submit(Client(inputName+"extra", inputBrokerHost, int(inputBrokerPort), inputClientHost, int(8082)).start)
 
 
 
