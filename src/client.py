@@ -20,6 +20,7 @@ class Client:
         self.name = name  # Único.
         self.broker_host = '127.0.0.1'
         self.broker_port = 8080
+        self.broker = [{'ip': '127.0.0.1', 'port': 8080}, {'ip': '127.0.0.1', 'port': 8079}]
         self._host = host
         self._port = port
         self._lock = threading.Lock()
@@ -56,7 +57,7 @@ class Client:
                     msg = pickle.loads(data)    # Recebe o array (queue) do Broker / mensagem de término.
                     
                     with self._lock:
-                        if msg == 'okr':      # (Não usado.)
+                        if msg == 'okr':      
                             self.requested = False
                             self.okr = True
                             print('======= RECEBI UM OK! =========')
@@ -81,53 +82,72 @@ class Client:
                     
         print("Closing listen thread.")
         
+        
+    def connect_to_broker(self, host, msg, flag = False):
+        if flag:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((host['ip'], host['port']))
+                s.sendall(pickle.dumps('SOS'))  # "Não consegui me conectar com o broker principal"
+            
+            self.broker.pop(0)  # Retira o broker desconectado da lista.
+            
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            #print('Trying connection ...')
+            #print(host['ip'], host['port'])
+            s.connect((host['ip'], host['port']))
+            
+            #print('Connected!')
+            # Manda junto informação sobre a porta de escuta.
+            msg = pickle.dumps(msg)
+            s.sendall(msg)
+    
+    
+    def try_connection(self, msg):
+        print('Ready to start sending')
+        try:
+            self.connect_to_broker(self.broker[0], msg)                        
+        except ConnectionRefusedError:
+            print("Connection refused. Notifying backup broker ...")
+            if(len(self.broker) > 1):
+                try:
+                    self.connect_to_broker(self.broker[1], msg, True)                        
+                except ConnectionRefusedError:
+                    print("Connection REFUSED 😡")
+            else:
+                print('There is no broker left. 😢')
+    
     
     def request(self, event):
         #print("Entering request thread as %s" % self.name)
         
         while not event.is_set() and not self.terminate:
             
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-                if not self.requested:  # Se já não mandou um 'acquire'.
-                    aleatorio = random.uniform(0.5, 2)
-                    time.sleep(aleatorio)
-                    
-                    try:
-                        print(self.broker_host, self.broker_port)
-                        s.connect((self.broker_host, self.broker_port))
-                        
-                        # Manda junto informação sobre a porta de escuta.
-                        msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
-                        s.sendall(msg)
-                        
-                        print(self.name)
-                        with self._lock:
-                            self.requested = True
-                        
-                    except ConnectionRefusedError:
-                        print("Connection refused on acquire.")
+            if not self.requested:  # Se já não mandou um 'acquire'.
+                aleatorio = random.uniform(0.5, 2)
+                time.sleep(aleatorio)
                 
-                elif self.queue != None and self.okr:  # Já deu subscribe.                    
-                    if len(self.queue) > 0:
-                        proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
-                        if proximo == self.name:
-                            print('\n>>> [%s]: Estou utilizando o recurso...' % self.name)
-                            time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
-                            #print('Terminei!')
-                            
-                            try:
-                                s.connect((self.broker_host, self.broker_port))
-                                msg = pickle.dumps(self.name + ' -release -var-X ' + self._host + ' ' +  str(self._port))
-                                print('%s liberou o recurso' % self.name)
-                                s.sendall(msg)
-                                with self._lock:
-                                    self.okr = False
-                                #self.requested = False
-                                
-                            except ConnectionRefusedError:
-                                print("Connection refused on release.")
+                #print('Sending message ...')
+                self.try_connection(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
+                #print('I\'ve just sent an acquire.')
+                with self._lock:
+                    self.requested = True
+            
+            elif self.queue != None and self.okr:  # Já deu subscribe.                    
+                if len(self.queue) > 0:
+                    proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
+                    if proximo == self.name:
+                        print('\n>>> [%s]: Estou utilizando o recurso...' % self.name)
+                        time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
+                        #print('Terminei!')
+                        
+                        self.try_connection(self.name + ' -release -var-X ' + self._host + ' ' +  str(self._port))
+                        print('%s liberou o recurso' % self.name)
+                        with self._lock:
+                            self.okr = False
+
                                 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
