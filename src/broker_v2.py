@@ -10,7 +10,9 @@ host = '127.0.0.1'
 port = 8080
 selector_timeout = 3
 
-### todo: BUGS INSERIDOS - aparece erro de release.
+
+### todo: o broker pode cair a qualquer momento, então podemos resetar todos os clientes
+### para o estado atual de broker de backup e atualizar suas flags de acordo.
 
 class Broker:
     
@@ -51,7 +53,7 @@ class Broker:
                         print(pickle.loads(retorno))
                     
         
-    def update_queue(self, msg):
+    def update_queue(self, msg):  # Age como cliente.
         if self.queue == None:  # Primeira mensagem.
             self.queue = msg
             print('Queue atualizada')
@@ -70,6 +72,7 @@ class Broker:
         msg = pickle.loads(msg)
         
         if not self._main:  # É backup.
+            #print('I am a backup.')
             if msg == 'SOS':
                 print('I am now the main broker 👍')
                 self._main = True    
@@ -123,6 +126,8 @@ class Broker:
                     self.queue.pop(0)
                     print(self.queue)
                     
+                    self.sendMessageToClients(sub, False)  # (!) Antes de mandar o 'okr'. Como não há 'ok acquire', o cliente pode receber um 'okr' antes de receber um 'pop' e atualizar a sua queue, ocasioanndo erros de releases duplo.
+                    
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
                         try:
                             s.connect((self.clients[_id]['host'], self.clients[_id]['port']))
@@ -131,7 +136,6 @@ class Broker:
                             #print('%s NÃO recebeu o OK!' % _id)
                             pass
                         
-                    self.sendMessageToClients(sub, False)
                 else:
                     print('>>> [ERRO] Release inválido. Requerente: %s | Próximo na fila: %s' % (_id, self.queue[0]))
             else:

@@ -8,6 +8,8 @@ import pickle
 duracao = 20
 socket.setdefaulttimeout(3)
 
+### .notify() não funciona.
+
 def port_in_use(port, obj):
     if port == "":
         return True
@@ -28,8 +30,8 @@ class Client:
         self.queue = None  # Primeiro da fila = próxima execução.
         self.terminate = False
         self.okr = True
+    
 
-        
     def listen(self, event):
         
         #print(event.is_set(), self.terminate)
@@ -194,7 +196,6 @@ def port(port):
 #         logging.debug('Consumer consumed the resource')
 #         
 #     with cv:
-#         logging.debug('Fuck')
 #         cv.wait()
 #         logging.debug('Consumer consumed the resource')
 #         

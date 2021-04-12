@@ -42,7 +42,7 @@ class Client:
             
             while not event.is_set() and not self.terminate:  # Tempo da main thread / mensagem de término do broker.
                 
-                print('\nEsperando mensagem (%s)' % self.name)
+                #print('\nEsperando mensagem (%s)' % self.name)
                 
                 conn, addr = None, None
                 try:
@@ -60,7 +60,7 @@ class Client:
                         if msg == 'okr':      
                             self.requested = False
                             self.okr = True
-                            print('======= RECEBI UM OK! =========')
+                            print('[%s] ======= RECEBI UM OK! =========' % self.name)
                             
                         elif isinstance(msg, list):
                             if self.queue == None:  # Subscribe.
@@ -103,7 +103,7 @@ class Client:
     
     
     def try_connection(self, msg):
-        print('Ready to start sending')
+        #print('Ready to start sending')
         try:
             self.connect_to_broker(self.broker[0], msg)                        
         except ConnectionRefusedError:
@@ -139,14 +139,16 @@ class Client:
                 if len(self.queue) > 0:
                     proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
                     if proximo == self.name:
-                        print('\n>>> [%s]: Estou utilizando o recurso...' % self.name)
+                        #print('\n>>> [%s]: Estou utilizando o recurso...' % self.name)
                         time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
                         #print('Terminei!')
                         
+                        print('\nOPA ======== %s - %s - %s =========' % (self.name, self.queue, proximo))
                         self.try_connection(self.name + ' -release -var-X ' + self._host + ' ' +  str(self._port))
                         print('%s liberou o recurso' % self.name)
                         with self._lock:
                             self.okr = False
+                            print('\n---> %s atualizei okr: %s' % (self.name, self.okr))
 
                                 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
