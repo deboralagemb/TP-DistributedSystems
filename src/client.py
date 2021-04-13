@@ -32,6 +32,21 @@ class Client:
         
     def listen(self, event):
         
+        def deal_with_queue(_queue):
+            print('\n[%s]: Queue atualizada: ' % self.name, end='')
+            if self.queue == None:  # Subscribe.
+                print('ação subscribe %s' % self.queue)
+            else:
+                print('sincronizando contexto com o broker backup %s' % self.queue)
+                #notify() também entraria aqui
+            
+            self.queue = _queue
+            
+            self.okr = True  # Caso seja sincronização com o backup e o cliente tenha mandado mensagem de release para o principal não lida.
+            if self.name in self.queue:
+                self.requested = True
+        
+        
         #print(event.is_set(), self.terminate)
         
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -63,20 +78,21 @@ class Client:
                             print('[%s] ======= RECEBI UM OK! =========' % self.name)
                             
                         elif isinstance(msg, list):
-                            if self.queue == None:  # Subscribe.
-                                self.queue = msg
-                                print('\n[%s]: Queue atualizada: ação subscribe %s' % (self.name, self.queue))
-                                
-                            elif len(msg) == 1:
+                            if len(msg) > 0:
                                 if msg[0] == '%pop%':
                                     self.queue.pop(0)
                                     print('\n[%s]: Queue atualizada: ação release %s' % (self.name, self.queue))
-                                else:               # Atualização na queue (próximo acquire recebido).
-                                    self.queue.append(msg[0])
+                                elif msg[0] == '%app%':               # Atualização na queue (próximo acquire recebido).
+                                    self.queue.append(msg[1])
                                     print('\n[%s]: Queue atualizada: ação acquire %s' % (self.name, self.queue))
-                                                            
+                                else:
+                                    deal_with_queue(msg)
+                            else:
+                                deal_with_queue(msg)
+                                
                         else:
                             print('ERRO 01: Mensagem inválida')
+                            raise NotImplementedError
 
                     conn.close()
                     
@@ -92,11 +108,8 @@ class Client:
             self.broker.pop(0)  # Retira o broker desconectado da lista.
             
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            #print('Trying connection ...')
-            #print(host['ip'], host['port'])
             s.connect((host['ip'], host['port']))
-            
-            #print('Connected!')
+
             # Manda junto informação sobre a porta de escuta.
             msg = pickle.dumps(msg)
             s.sendall(msg)
@@ -121,9 +134,6 @@ class Client:
         #print("Entering request thread as %s" % self.name)
         
         while not event.is_set() and not self.terminate:
-            
-            #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
             if not self.requested:  # Se já não mandou um 'acquire'.
                 aleatorio = random.uniform(0.5, 2)

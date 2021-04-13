@@ -10,9 +10,13 @@ host = '127.0.0.1'
 port = 8080
 selector_timeout = 3
 
-
-### todo: o broker pode cair a qualquer momento, então podemos resetar todos os clientes
-### para o estado atual de broker de backup e atualizar suas flags de acordo.
+### Esta aplicação comporta 2 (dois) brokers.
+### Broker BACKUP pode receber mensagens de clientes e repassa essas mensagens para o broker principal.
+### Broker BACKUP NÃO manda mensagens para os clientes.
+### Broker BACKUP se comporta como cliente, com adicional de estar recebendo a lista de clientes atualizada do broker PRINCIPAL.
+### Assim que o broker PRINCIPAL cai, os clientes avisam o backup e ele se torna o principal.
+### O broker que virou pricipal inicialmente manda a queue inteira para todos os clientes atualizarem o contexto.
+### @todo: colocar mais de uma variável, ao invés de apenas -var-X (alteração tanto no broker quanto no cliente).
 
 class Broker:
     
@@ -25,6 +29,7 @@ class Broker:
         self._lock = threading.Lock()
         self.sibling_broker = {'ip': '127.0.0.1', 'port': '8079'}
         self._main = True  # False: Backup
+        self.sibling_is_dead = False
         
         
     def sendMessageToClients(self, sub, acq):        
@@ -39,7 +44,7 @@ class Broker:
                         print('%s SUBSCRIBED!' % client_name)
                     else:
                         if acq:
-                            retorno = pickle.dumps([self.queue[-1]])  # O último a mandar acquire.
+                            retorno = pickle.dumps(['%app%', self.queue[-1]])  # O último a mandar acquire.
                         else:
                             retorno = pickle.dumps(['%pop%'])
                             
@@ -52,33 +57,49 @@ class Broker:
                         print("Connection REFUSED on:", client_name, end=' ')
                         print(pickle.loads(retorno))
                     
-        
-    def update_queue(self, msg):  # Age como cliente.
-        if self.queue == None:  # Primeira mensagem.
-            self.queue = msg
-            print('Queue atualizada')
+    
+    def sendClientListToBackup(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((self.sibling_broker['ip'], self.sibling_broker['port']))  # Broker backup.
+            s.sendall(pickle.dumps(['clients'].extend([self.clients])))
             
-        elif len(msg) == 1:
+    
+    def update_queue(self, msg):  # Se comporta como cliente. Sempre será uma lista.
+        if len(msg) > 0:
             if msg[0] == '%pop%':
                 self.queue.pop(0)
                 print('\n[%s]: Queue atualizada: ação release %s' % (self.name, self.queue))
-            else:  # Atualização na queue (próximo acquire recebido).
-                self.queue.append(msg[0])
+            elif msg[0] == '%app%':  # Atualização na queue (próximo acquire recebido).
+                self.queue.append(msg[1])
                 print('\n[%s]: Queue atualizada: ação acquire %s' % (self.name, self.queue))
+            else:
+                self.queue = msg
+                print('Queue atualizada %s' % self.queue)
+        else:
+            self.queue = []
+            print('Queue atualizada %s' % self.queue)
     
         
     def resolveMsg(self, msg):
         
         msg = pickle.loads(msg)
         
+        
+        # ========== Tratando broker backup [INÍCIO] ========== #
+        
         if not self._main:  # É backup.
             #print('I am a backup.')
             if msg == 'SOS':
                 print('I am now the main broker 👍')
-                self._main = True    
+                self._main = True
+                self.sibling_is_dead = True
                 
-            elif isinstance(msg, list):  # Mensagem do broker principal.
-                self.update_queue(msg)
+            elif isinstance(msg, list):  # Mensagem do broker principal. Os clientes só mandam strings. Broker só manda lista.
+                if msg[0] == 'clients':
+                    self.clients = msg[1]
+                    print('\nAtualizei minha lista de clientes.')
+                else:
+                    self.update_queue(msg)
                 
             else:  # Encaminha a mensagem para o broker principal.
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -89,6 +110,8 @@ class Broker:
                     except ConnectionRefusedError:
                         print("Connection REFUSED on main BROKER. 😡😡😡")
             return
+        
+        # ========== Tratando broker backup [FIM] ========== #
         
         with self._lock:
             self.count += 1
@@ -109,7 +132,12 @@ class Broker:
         
         sub = _id if (_id not in self.clients and _id not in self.queue) else ''  # Se é o primeiro contato do cliente, mande todo o array (subscribe).        
         #if msg[-2] != self.sibling_broker['ip'] or msg[-1] != self.sibling_broker['port']:  # Não é o broker backup mandando mensagem.
-        self.clients[_id] = {'host': msg[-2], 'port': int(msg[-1])}  # 'id': [host, port], inclusive do broker backup.
+        
+        if _id not in self.clients:  # Atualiza a lista de clientes.
+            self.clients[_id] = {'host': msg[-2], 'port': int(msg[-1])}  # 'id': [host, port], inclusive do broker backup.
+            if not self.sibling_is_dead and False:  ### @todo alterar aqui quando for adicionado um broker backup (retirar o 'and False').
+                self.sendClientListToBackup()
+        
         action = msg[1]
         
         if action == '-acquire':
