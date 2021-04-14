@@ -6,7 +6,6 @@ import types
 import threading
 import pickle
 import traceback
-import copy
 
 selector_timeout = 3
 
@@ -21,26 +20,27 @@ selector_timeout = 3
 class Broker:
     
     def __init__(self):
+        self.name = 'Main'
         self.host = '127.0.0.1'
         self.port = 8080  # 1-65535
-        self.clients = {}
+        self.clients = {'backup': {'host': '127.0.0.1', 'port': 8079}}
         self.queue = []
         self.count = 0
         self._lock = threading.Lock()
-        self.sibling_broker = {'ip': '127.0.0.1', 'port': 8079}
-        self._main = True  # False: Backup
+        self.sibling_broker = {'host': '127.0.0.1', 'port': 8079}
+        self._main = True  # True: Principal
         self.sibling_is_dead = False
         self.msg_to_backup = ['clients']
         
         
-    def sendMessageToClients(self, sub, acq):        
+    def sendMessageToClients(self, sub, acq, toAll = False):        
         with self._lock:  # Lock queue.            
             for client_name in self.clients:  # Manda a queue para todos os clientes.                
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     
                     retorno = b''
-                    if client_name == sub:  # Subscribing.
+                    if client_name == sub or toAll:  # Subscribing.
                         retorno = pickle.dumps(self.queue)  # Manda o array todo.
                         print('%s SUBSCRIBED!' % client_name)
                     else:
@@ -62,10 +62,9 @@ class Broker:
     def sendClientListToBackup(self):
         self.msg_to_backup = ['clients']
         self.msg_to_backup.append(self.clients)
-        #print('msg:', self.msg_to_backup)
-        print('\n------------> avisando o backup %s' % self.msg_to_backup)
+        #print('\n------------> avisando o backup %s' % self.msg_to_backup)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((self.sibling_broker['ip'], self.sibling_broker['port']))  # Broker backup.
+            s.connect((self.sibling_broker['host'], self.sibling_broker['port']))  # Broker backup.
             s.sendall(pickle.dumps(self.msg_to_backup))
             
     
@@ -99,22 +98,25 @@ class Broker:
                 print('I am now the main broker 👍')
                 self._main = True
                 self.sibling_is_dead = True
-                
+                self.sendMessageToClients('', False, True)
+                            
             elif isinstance(msg, list):  # Mensagem do broker principal. Os clientes só mandam strings. Broker só manda lista.
                 if msg[0] == 'clients':
                     self.clients = msg[1]
+                    #print(msg[1])
                     print('\nAtualizei minha lista de clientes.')
                 else:
+                    print('\natualizando minha queue %s' % msg)
                     self.update_queue(msg)
                 
             else:  # Encaminha a mensagem para o broker principal.
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     try:
-                        print('Forwarding client message ...')
-                        s.connect((self.sibling_broker['ip'], self.sibling_broker['port']))
+                        print('[%s] Forwarding client message ...' % (msg.split()[0]))
+                        s.connect((self.sibling_broker['host'], self.sibling_broker['port']))
                         s.sendall(pickle.dumps(msg))
                     except ConnectionRefusedError:
-                        print("Connection REFUSED on main BROKER. 😡😡😡")
+                        print("Connection REFUSED on main BROKER. 😡😡😡 %s" % msg)  # Poderia virar principal aqui, sem precisar de mensagens dos clientes.
             return
         elif msg == 'SOS':  # Todas as outras mensagens de aviso serão descartadas.
             return
@@ -124,7 +126,9 @@ class Broker:
         with self._lock:
             self.count += 1
         
-        #print('=== AQUI ', msg)
+        if isinstance(msg, list):  # Mensagem do principal recebida após o backup receber mensagem para se tornar principal.
+            return
+        
         msg = msg.split() # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
         
@@ -140,12 +144,11 @@ class Broker:
         print('%3s. %s' % (self.count, " ".join(msg[:-2])), end='  ')  # Esta mensagem pode estar fora de sincronia.
         
         sub = _id if (_id not in self.clients and _id not in self.queue) else ''  # Se é o primeiro contato do cliente, mande todo o array (subscribe).        
-        #if msg[-2] != self.sibling_broker['ip'] or msg[-1] != self.sibling_broker['port']:  # Não é o broker backup mandando mensagem.
+        #if msg[-2] != self.sibling_broker['host'] or msg[-1] != self.sibling_broker['port']:  # Não é o broker backup mandando mensagem.
         
         if _id not in self.clients:  # Atualiza a lista de clientes.
             self.clients[_id] = {'host': msg[-2], 'port': int(msg[-1])}  # 'id': [host, port], inclusive do broker backup.
-            print('\n-------> Atualizei clientes %s' % self.sibling_is_dead)
-            if not self.sibling_is_dead:  ### @todo alterar aqui quando for adicionado um broker backup (retirar o 'and False').
+            if not self.sibling_is_dead:  ### @todo para funcionar com apensa um broker, adicione 'and False'.
                 self.sendClientListToBackup()
         
         action = msg[1]

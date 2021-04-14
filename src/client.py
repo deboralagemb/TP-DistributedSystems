@@ -5,7 +5,7 @@ import time
 import random
 import pickle
 
-duracao = 15
+duracao = 20
 socket.setdefaulttimeout(3)
 
 def port_in_use(port, obj):
