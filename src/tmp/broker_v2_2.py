@@ -82,6 +82,7 @@ class Broker:
     def resolveMsg(self, msg):
         
         msg = pickle.loads(msg)
+        #print('Mensagem: %s' % msg)
         if msg == None:
             return
         
@@ -97,6 +98,7 @@ class Broker:
             elif isinstance(msg, list):  # Mensagem do broker principal. Os clientes só mandam strings. Broker só manda lista.
                 if msg[0] == 'clients':
                     self.clients = msg[1]
+                    #print(msg[1])
                     print('\nAtualizei minha lista de clientes.')
                 else:
                     self.update_queue(msg)
@@ -118,6 +120,7 @@ class Broker:
         with self._lock:
             self.count += 1
         
+        #print('nova mensagem ---> %s' % msg)
         msg = msg.split() # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
         
@@ -136,6 +139,7 @@ class Broker:
         #if msg[-2] != self.sibling_broker['ip'] or msg[-1] != self.sibling_broker['port']:  # Não é o broker backup mandando mensagem.
         
         if _id not in self.clients:  # Atualiza a lista de clientes.
+            #print('opa------- ', msg, _id, msg[-2], int(msg[-1]), self.clients)
             self.clients[_id] = {'host': msg[-2], 'port': int(msg[-1])}  # 'id': [host, port], inclusive do broker backup.
             if not self.sibling_is_dead:  ### @todo alterar aqui quando for adicionado um broker backup (retirar o 'and False').
                 self.sendClientListToBackup()
@@ -249,16 +253,23 @@ class Broker:
                 lsock.close()  # Libera a porta.
                 break
 
-if __name__ == "__main__":
-    try:
-        broker = Broker()
-        broker.start()
-    except Exception:
-        traceback.print_exc()
-        # Caso a porta não esteja liberada por um erro do programa:
-        from psutil import process_iter
-        from signal import SIGTERM # or SIGKILL
-        for proc in process_iter():
-            for conns in proc.connections(kind='inet'):
-                if conns.laddr.port == 8079:  # qualquer porta
-                    proc.send_signal(SIGTERM) # or SIGKILL
+# =============================================================================
+# if __name__ == "__main__":
+#     try:
+# =============================================================================
+broker = Broker()
+print('Sou o broker PRINCIPAL!\n') if broker._main else print('Sou o broker BACKUP!\n')
+broker.start()
+# =============================================================================
+#     except Exception:
+#         traceback.print_exc()
+# =============================================================================
+# =============================================================================
+#         # Caso a porta não esteja liberada por um erro do programa:
+#         from psutil import process_iter
+#         from signal import SIGTERM # or SIGKILL
+#         for proc in process_iter():
+#             for conns in proc.connections(kind='inet'):
+#                 if conns.laddr.port == 8079:  # qualquer porta
+#                     proc.send_signal(SIGTERM) # or SIGKILL
+# =============================================================================

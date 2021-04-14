@@ -6,6 +6,7 @@ import types
 import threading
 import pickle
 import traceback
+import copy
 
 selector_timeout = 3
 
@@ -29,6 +30,7 @@ class Broker:
         self.sibling_broker = {'ip': '127.0.0.1', 'port': 8079}
         self._main = True  # False: Backup
         self.sibling_is_dead = False
+        self.msg_to_backup = ['clients']
         
         
     def sendMessageToClients(self, sub, acq):        
@@ -58,9 +60,13 @@ class Broker:
                     
     
     def sendClientListToBackup(self):
+        self.msg_to_backup = ['clients']
+        self.msg_to_backup.append(self.clients)
+        #print('msg:', self.msg_to_backup)
+        print('\n------------> avisando o backup %s' % self.msg_to_backup)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.sibling_broker['ip'], self.sibling_broker['port']))  # Broker backup.
-            s.sendall(pickle.dumps(['clients'].extend([self.clients])))
+            s.sendall(pickle.dumps(self.msg_to_backup))
             
     
     def update_queue(self, msg):  # Se comporta como cliente. Sempre será uma lista.
@@ -138,6 +144,7 @@ class Broker:
         
         if _id not in self.clients:  # Atualiza a lista de clientes.
             self.clients[_id] = {'host': msg[-2], 'port': int(msg[-1])}  # 'id': [host, port], inclusive do broker backup.
+            print('\n-------> Atualizei clientes %s' % self.sibling_is_dead)
             if not self.sibling_is_dead:  ### @todo alterar aqui quando for adicionado um broker backup (retirar o 'and False').
                 self.sendClientListToBackup()
         
@@ -253,6 +260,7 @@ class Broker:
 if __name__ == "__main__":
     try:
         broker = Broker()
+        print('Sou o broker PRINCIPAL!\n') if broker._main else print('Sou o broker BACKUP!\n')
         broker.start()
     except Exception:
         traceback.print_exc()
