@@ -18,7 +18,7 @@ def port_in_use(port, obj):
 class Client:
     def __init__(self, name, host, port):
         self.name = name  # Único.
-        self.broker = [{'ip': '127.0.0.1', 'port': 8079}, {'ip': '127.0.0.1', 'port': 8080}]
+        self.broker = [{'host': '127.0.0.1', 'port': 8079}, {'ip': '127.0.0.1', 'port': 8080}]  # Conectado ao BACKUP (:8079)
         self._host = host
         self._port = port
         self._lock = threading.Lock()
@@ -97,13 +97,13 @@ class Client:
     def connect_to_broker(self, host, msg, flag = False):
         if flag:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((host['ip'], host['port']))
+                s.connect((host['host'], host['port']))
                 s.sendall(pickle.dumps('SOS'))  # "Não consegui me conectar com o broker principal"
             
             self.broker.pop(0)  # Retira o broker desconectado da lista.
             
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((host['ip'], host['port']))
+            s.connect((host['host'], host['port']))
 
             # Manda junto informação sobre a porta de escuta.
             msg = pickle.dumps(msg)
@@ -159,7 +159,7 @@ class Client:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             print("[%s] Closing request thread." % self.name)
-            s.connect((self.broker[0]['ip'], self.broker[0]['port']))
+            s.connect((self.broker[0]['host'], self.broker[0]['port']))
             s.sendall(pickle.dumps('%s exited' % self.name))  # Manda mensagem final.
             self.queue = None
         

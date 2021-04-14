@@ -23,7 +23,7 @@ class Broker:
         self.name = 'Main'
         self.host = '127.0.0.1'
         self.port = 8080  # 1-65535
-        self.clients = {'backup': {'host': '127.0.0.1', 'port': 8079}}
+        self.clients = {'Backup': {'host': '127.0.0.1', 'port': 8079}}
         self.queue = []
         self.count = 0
         self._lock = threading.Lock()
