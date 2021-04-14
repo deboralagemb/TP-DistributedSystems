@@ -21,13 +21,13 @@ class Broker:
     
     def __init__(self):
         self.host = '127.0.0.1'
-        self.port = 8080  # 1-65535
+        self.port = 8079  # 1-65535
         self.clients = {}
         self.queue = []
         self.count = 0
         self._lock = threading.Lock()
-        self.sibling_broker = {'ip': '127.0.0.1', 'port': 8079}
-        self._main = True  # False: Backup
+        self.sibling_broker = {'ip': '127.0.0.1', 'port': 8080}
+        self._main = False  # False: Backup
         self.sibling_is_dead = False
         
         
@@ -104,7 +104,7 @@ class Broker:
             else:  # Encaminha a mensagem para o broker principal.
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     try:
-                        print('Forwarding client message ...')
+                        print('[%s] Forwarding client message ...' % (msg.split()[0]))
                         s.connect((self.sibling_broker['ip'], self.sibling_broker['port']))
                         s.sendall(pickle.dumps(msg))
                     except ConnectionRefusedError:
@@ -118,7 +118,6 @@ class Broker:
         with self._lock:
             self.count += 1
         
-        #print('=== AQUI ', msg)
         msg = msg.split() # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
         
@@ -261,5 +260,5 @@ if __name__ == "__main__":
         from signal import SIGTERM # or SIGKILL
         for proc in process_iter():
             for conns in proc.connections(kind='inet'):
-                if conns.laddr.port == 8080:  # qualquer porta
+                if conns.laddr.port == 8079:  # qualquer porta
                     proc.send_signal(SIGTERM) # or SIGKILL

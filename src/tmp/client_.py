@@ -18,7 +18,7 @@ def port_in_use(port, obj):
 class Client:
     def __init__(self, name, host, port):
         self.name = name  # Único.
-        self.broker = [{'ip': '127.0.0.1', 'port': 8079}, {'ip': '127.0.0.1', 'port': 8080}]
+        self.broker = [{'ip': '127.0.0.1', 'port': 8080}, {'ip': '127.0.0.1', 'port': 8079}]
         self._host = host
         self._port = port
         self._lock = threading.Lock()
@@ -175,9 +175,9 @@ class Client:
 
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-    executor.submit( Client('Débora', '127.0.0.1', 8081).start )
-    executor.submit( Client('Felipe', '127.0.0.1', 8082).start )
-    executor.submit( Client('Gabriel', '127.0.0.1', 8083).start )
+    executor.submit( Client('Midoriya', '127.0.0.1', 8084).start )
+    executor.submit( Client('Boa_Hancock', '127.0.0.1', 8085).start )
+    executor.submit( Client('Edward_Elric', '127.0.0.1', 8086).start )
 
 
 
