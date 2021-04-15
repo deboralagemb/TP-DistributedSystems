@@ -86,6 +86,15 @@ class Broker:
         
     def resolveMsg(self, msg):
         
+        def respondClient(__id, __msg):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
+                try:
+                    s.connect((self.clients[__id]['host'], self.clients[__id]['port']))
+                    s.sendall(pickle.dumps(__msg))
+                except ConnectionRefusedError:
+                    print('ERRO: Response not sent [%s: %s] 🤧' % (__id, __msg))
+                    pass
+        
         msg = pickle.loads(msg)
         if msg == None:
             return
@@ -158,8 +167,10 @@ class Broker:
                 print('>>> [ERRO] Acquire duplo')
             else:            
                 self.queue.append(_id)  # Põe o nome do cliente no fim da lista.
-                print(self.queue)                
+                print(self.queue)
+                
                 self.sendMessageToClients(sub, True)
+                #respondClient(_id, 'oka')
                 
         elif action == '-release':
             if len(self.queue) > 0:
@@ -168,14 +179,7 @@ class Broker:
                     print(self.queue)
                     
                     self.sendMessageToClients(sub, False)  # (!) Antes de mandar o 'okr'. Como não há 'ok acquire', o cliente pode receber um 'okr' antes de receber um 'pop' e atualizar a sua queue, ocasioanndo erros de releases duplo.
-                    
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
-                        try:
-                            s.connect((self.clients[_id]['host'], self.clients[_id]['port']))
-                            s.sendall(pickle.dumps('okr'))
-                        except ConnectionRefusedError:
-                            #print('%s NÃO recebeu o OK!' % _id)
-                            pass
+                    respondClient(_id, 'okr')
                         
                 else:
                     print('>>> [ERRO] Release inválido. Requerente: %s | Próximo na fila: %s' % (_id, self.queue[0]))

@@ -92,19 +92,9 @@ class Client:
         
         
     def connect_to_broker(self, host, msg, flag = False):
-        if flag:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((host['host'], host['port']))
-                s.sendall(pickle.dumps('SOS'))  # "Não consegui me conectar com o broker principal"
-            
-            self.broker.pop(0)  # Retira o broker desconectado da lista.
-            
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((host['host'], host['port']))
-
-            # Manda junto informação sobre a porta de escuta.
-            msg = pickle.dumps(msg)
-            s.sendall(msg)
+        self.send(host, msg)            
+        with self._lock:
+            self.requested = True
     
     
     def try_connection(self, msg):
@@ -131,10 +121,14 @@ class Client:
                 time.sleep(aleatorio)
                 
                 self.try_connection(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
-                with self._lock:
-                    self.requested = True
             
-            elif self.queue != None and self.okr:  # Já deu subscribe.                    
+            elif self.queue != None and self.okr:  # Já deu subscribe.   
+                time.sleep(0.5)  # Pode ter casos em que o broker vá receber acquire corretamente mais levará mais que 0.5s para responder, o que irá gerar acquire duplo.
+                if self.name not in self.queue:  # Tratando caso em que broker principal cai logo após receber acquire.
+                    print('\n(!) ---> [%s] My acquire request somehow was never received ... 🤔 trying again!' % self.name)
+                    self.requested = False
+                    continue
+                 
                 if len(self.queue) > 0:
                     proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
                     if proximo == self.name:
@@ -153,12 +147,33 @@ class Client:
             s.sendall(pickle.dumps('%s exited' % self.name))  # Manda mensagem final.
             self.queue = None
         
-
-    def start(self):        
+        
+    def send(self, host, m):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host['host'], host['port']))
+            msg = pickle.dumps(m)
+            s.sendall(msg) 
+    
+    
+    def checkBroker(self, event):
+        while not event.is_set():
+            time.sleep(1.5)
+            try:
+                self.send(self.broker[0], None)
+            except ConnectionRefusedError:
+                print('Notifying backup broker ...')
+                self.send(self.broker[1], 'SOS')
+                time.sleep(0.25)
+                self.broker.pop(0)
+                break   
+    
+        
+    def start(self):
         event = threading.Event()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             executor.submit(self.listen, event)  # Thread para escutar o broker.
             executor.submit(self.request, event)  # Thread para mandar mensagem para o broker.
+            executor.submit(self.checkBroker, event)  # - Are you there?
             
             time.sleep(duracao)  # Tempo da aplicação.
             event.set()
