@@ -25,7 +25,6 @@ class Broker:
         self.host = '127.0.0.1'
         self.port = 8080  # 1-65535
         self.clients = {'Backup': {'host': '127.0.0.1', 'port': 8079}}
-        self.queue = []
         self.queueVarX = []
         self.queueVarY = []
         self.count = 0
@@ -57,10 +56,10 @@ class Broker:
                                 retorno = ['-var-X']
                                 retorno.append(['%app%', self.queueVarX[-1]])
                                 retorno.append('-var-Y')
-                                retorno.append(self.queueVarY)
+                                retorno.append([])
                             else:
                                 retorno = ['-var-X']
-                                retorno.append(self.queueVarX)
+                                retorno.append([])
                                 retorno = ['-var-Y']
                                 retorno.append(['%app%', self.queueVarY[-1]])
                             retorno = pickle.dumps(retorno)
@@ -105,7 +104,6 @@ class Broker:
         msg = pickle.loads(msg)
         if msg == None:
             return
-        print('msg: ', msg)
         # ========== Tratando broker backup [INÍCIO] ========== #
 
         if not self._main:  # É backup.
@@ -159,7 +157,6 @@ class Broker:
 
         msg = msg.split()  # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
         _id = msg[0]  # Nome do cliente.
-
         if msg[1] == 'exited':
             self.clients.pop(_id)  # Retira o cliente do conjunto de clientes.
             print('\n----------------\n%s saiu\n----------------' % _id)
@@ -186,7 +183,6 @@ class Broker:
         if "-var-X" in msg[2]:
             self.try_acquire(self.queueVarX, action, _id, sub, True)
         elif "-var-Y" in msg[2]:
-            print('SERIAAAO???')
             self.try_acquire(self.queueVarY, action, _id, sub, False)
         else:
             print('Variable does not exists')
@@ -213,7 +209,8 @@ class Broker:
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
                         try:
                             s.connect((self.clients[_id]['host'], self.clients[_id]['port']))
-                            s.sendall(pickle.dumps('okr'))
+                            var = ('-var-X' if isVarX else '-var-Y')
+                            s.sendall(pickle.dumps('okr ' + var))
                         except ConnectionRefusedError:
                             # print('%s NÃO recebeu o OK!' % _id)
                             pass
