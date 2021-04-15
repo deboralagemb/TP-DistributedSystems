@@ -71,15 +71,12 @@ class Client:
                         elif isinstance(msg, list):
                             # ['-var-X', ['%app%', 'Midoriya'], '-var-Y', []]
                             print('message that im recieving from broker: ', msg)
-                            # if self.queue == None:  # Subscribe.
-                            #     self.queue = msg
-                            #     print('\n[%s]: Queue atualizada: ação subscribe %s' % (self.name, self.queue))
 
-                            if self.queueVarX == None:
+                            if self.queueVarX == None and msg[1]:
                                 self.queueVarX = msg[1]
                                 print('\n[%s]: Queue X atualizada: ação subscribe %s' % (self.name, self.queueVarX))
 
-                            elif self.queueVarY == None:
+                            elif self.queueVarY == None and msg[3]:
                                 self.queueVarY = msg[3]
                                 print('\n[%s]: Queue Y atualizada: ação subscribe %s' % (self.name, self.queueVarY))
                                 
@@ -136,10 +133,12 @@ class Client:
                         
                         # Manda junto informação sobre a porta de escuta.
                         r = random.randrange(0, 10)
-                        if r % 2:
-                            msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
-                        else:
-                            msg = pickle.dumps(self.name + ' -acquire -var-Y %s %s' % (self._host, self._port))
+                        # if r % 2:
+                        # self.wasLatestAcquireVarX = True
+                        # msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
+                        # else:
+                        self.wasLatestAcquireVarX = False
+                        msg = pickle.dumps(self.name + ' -acquire -var-Y %s %s' % (self._host, self._port))
                         s.sendall(msg)
                         
                         print(self.name)
@@ -149,7 +148,7 @@ class Client:
                     except ConnectionRefusedError:
                         print("Connection refused on acquire.")
                 
-                elif self.queueVarX != None and self.okrVarX:  # Já deu subscribe.
+                elif self.queueVarX != None and self.okrVarX and self.wasLatestAcquireVarX:  # Já deu subscribe.
                     if len(self.queueVarX) > 0:
                         proximo = self.queueVarX[0]  # Ex.: ['Débora', '-acquire', '-var-X']
                         if proximo == self.name:
@@ -164,7 +163,6 @@ class Client:
                                 s.sendall(msg)
                                 with self._lock:
                                     self.okrVarX = False
-                                #self.requested = False
                                 
                             except ConnectionRefusedError:
                                 print("Connection refused on release.")
@@ -176,12 +174,12 @@ class Client:
 
                 elif self.queueVarY != None and self.okrVarY:  # Já deu subscribe.
                     if len(self.queueVarY) > 0:
+                        print('ummmm')
                         proximo = self.queueVarY[0]  # Ex.: ['Débora', '-acquire', '-var-X']
                         if proximo == self.name:
                             print('\n>>> [%s]: Estou utilizando o recurso...' % self.name)
                             time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
-                            # print('Terminei!')
-
+                            print('dooois')
                             try:
                                 s.connect((self.broker_host, self.broker_port))
                                 msg = pickle.dumps(self.name + ' -release -var-Y ' + self._host + ' ' + str(self._port))
@@ -189,7 +187,6 @@ class Client:
                                 s.sendall(msg)
                                 with self._lock:
                                     self.okrVarY = False
-                                # self.requested = False
 
                             except ConnectionRefusedError:
                                 print("Connection refused on release.")
@@ -220,8 +217,8 @@ class Client:
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
     executor.submit( Client('Midoriya', '127.0.0.1', 8084).start )
-    # executor.submit( Client('Hisoka', '127.0.0.1', 8085).start )
-    # executor.submit( Client('Boa_Hancock', '127.0.0.1', 8086).start )
+    executor.submit( Client('Hisoka', '127.0.0.1', 8085).start )
+    executor.submit( Client('Boa_Hancock', '127.0.0.1', 8086).start )
 
 
 

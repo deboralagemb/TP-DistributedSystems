@@ -66,9 +66,6 @@ class Broker:
                         else:
                             retorno = pickle.dumps(['%pop%'])
 
-
-                    # print('enviando para %s' % client_name)
-
                     try:
                         s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))
                         s.sendall(retorno)
@@ -113,10 +110,9 @@ class Broker:
                 self._main = True
                 self.sibling_is_dead = True
                 if "-var-X" in msg[2]:
-                    self.sendMessageToClients('', False, True, self.queueVarX, True)
+                    self.sendMessageToClients('', False, self.queueVarX, True, True)
                 elif "-var-Y" in msg[2]:
-                    print()
-                    self.sendMessageToClients('', False, True, self.queueVarY, False)
+                    self.sendMessageToClients('', False, self.queueVarY, False, True)
                 else:
                     print('Variable does not exists')
 
@@ -169,9 +165,10 @@ class Broker:
             return
 
         print('%3s. %s' % (self.count, " ".join(msg[:-2])), end='  ')  # Esta mensagem pode estar fora de sincronia.
-
-        sub = _id if (_id not in self.clients and _id not in self.queueVarX or _id not in self.queueVarY) else ''
-
+        if '-var-X' in msg[2]:
+            sub = _id if (_id not in self.clients and _id not in self.queueVarX) else ''
+        else:
+            sub = _id if (_id not in self.clients and _id not in self.queueVarY) else ''
 
         if _id not in self.clients:  # Atualiza a lista de clientes.
             self.clients[_id] = {'host': msg[-2],
@@ -196,7 +193,7 @@ class Broker:
             else:
                 queue.append(_id)  # Põe o nome do cliente no fim da lista.
                 print(queue)
-                self.sendMessageToClients(sub, True, queue, isVarX)
+                self.sendMessageToClients(sub, True, queue, isVarX, False)
 
         elif action == '-release':
             if len(queue) > 0:
@@ -204,7 +201,7 @@ class Broker:
                     queue.pop(0)
                     print(queue)
 
-                    self.sendMessageToClients(sub, False, queue, isVarX)  # (!) Antes de mandar o 'okr'. Como não há 'ok acquire', o cliente pode receber um 'okr' antes de receber um 'pop' e atualizar a sua queue, ocasioanndo erros de releases duplo.
+                    self.sendMessageToClients(sub, False, queue, isVarX, False)  # (!) Antes de mandar o 'okr'. Como não há 'ok acquire', o cliente pode receber um 'okr' antes de receber um 'pop' e atualizar a sua queue, ocasioanndo erros de releases duplo.
 
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
                         try:
@@ -212,7 +209,6 @@ class Broker:
                             var = ('-var-X' if isVarX else '-var-Y')
                             s.sendall(pickle.dumps('okr ' + var))
                         except ConnectionRefusedError:
-                            # print('%s NÃO recebeu o OK!' % _id)
                             pass
 
                 else:
