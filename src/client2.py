@@ -57,7 +57,7 @@ class Client:
                     data = conn.recv(4096)      # Recebe resposta do broker.
         
                     msg = pickle.loads(data)    # Recebe o array (queue) do Broker / mensagem de término.
-                    
+                    print('message that im recieving from broker: ', msg)
                     with self._lock:
                         if msg == 'okr':      # (Não usado.)
                             self.requested = False

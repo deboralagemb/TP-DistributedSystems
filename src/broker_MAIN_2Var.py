@@ -46,7 +46,7 @@ class Broker:
                         # QUEUE AQUI: ['Midoriya', 'Hisoka', 'Boa_Hancock'] - preciso saber qual queue é de qual
                         retorno = ['-var-X']
                         retorno.append(self.queueVarX)
-                        retorno = ['-var-Y']
+                        retorno.append('-var-Y')
                         retorno.append(self.queueVarY)
                         retorno = pickle.dumps(retorno)  # Manda o array todo.
                         print('%s SUBSCRIBED!' % client_name)
@@ -56,12 +56,14 @@ class Broker:
                             if isVarX:
                                 retorno = ['-var-X']
                                 retorno.append(['%app%', self.queueVarX[-1]])
+                                retorno.append('-var-Y')
+                                retorno.append(self.queueVarY)
                             else:
+                                retorno = ['-var-X']
+                                retorno.append(self.queueVarX)
                                 retorno = ['-var-Y']
                                 retorno.append(['%app%', self.queueVarY[-1]])
                             retorno = pickle.dumps(retorno)
-                            # retorno = ['-var-Y']
-                            # retorno.append(pickle.dumps(['%app%', self.queueVarY[-1]]))
                         else:
                             retorno = pickle.dumps(['%pop%'])
 

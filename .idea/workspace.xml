@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d5895412-4527-4dee-8be1-c0bde328f424" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/broker_MAIN_2Var.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/broker_MAIN.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/broker_MAIN.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/broker_MAIN_2Var.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/broker_MAIN_2Var.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/client2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/client2.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -38,7 +36,7 @@
       <recent name="$PROJECT_DIR$/src" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.client2">
+  <component name="RunManager" selected="Python.broker_MAIN_2Var">
     <configuration name="broker" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="BCC362TP2" />
       <option name="INTERPRETER_OPTIONS" value="" />
