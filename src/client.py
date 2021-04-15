@@ -35,7 +35,7 @@ class Client:
             if self.queue == None:  # Subscribe.
                 print('ação subscribe %s' % self.queue)
             else:
-                print('sincronizando contexto com o broker backup %s' % self.queue)
+                print('sincronizando contexto com o broker backup')
                 #notify() também entraria aqui
             
             self.queue = _queue
@@ -53,13 +53,11 @@ class Client:
             s.listen()
             
             while not event.is_set() and not self.terminate:  # Tempo da main thread / mensagem de término do broker.
-                
-                #print('\nEsperando mensagem (%s)' % self.name)                
+                             
                 conn, addr = None, None
                 try:
                     conn, addr = s.accept()  # (!) Bloqueia a execução!
                 except socket.timeout:
-                    #print('\nsocket.accept timed out on', self.name)
                     continue
                 
                 with conn:
@@ -70,7 +68,6 @@ class Client:
                         if msg == 'okr':      
                             self.requested = False
                             self.okr = True
-                            #print('[%s] ======= RECEBI UM OK! =========' % self.name)
                             
                         elif isinstance(msg, list):
                             if len(msg) > 0:
@@ -111,7 +108,6 @@ class Client:
     
     
     def try_connection(self, msg):
-        #print('Ready to start sending')
         try:
             self.connect_to_broker(self.broker[0], msg)                        
         except ConnectionRefusedError:
@@ -134,9 +130,7 @@ class Client:
                 aleatorio = random.uniform(0.5, 2)
                 time.sleep(aleatorio)
                 
-                #print('Sending message ...')
                 self.try_connection(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
-                #print('I\'ve just sent an acquire.')
                 with self._lock:
                     self.requested = True
             
@@ -144,16 +138,12 @@ class Client:
                 if len(self.queue) > 0:
                     proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
                     if proximo == self.name:
-                        #print('\n>>> [%s]: Estou utilizando o recurso...' % self.name)
                         time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
-                        #print('Terminei!')
                         
-                        #print('\nOPA ======== %s - %s - %s =========' % (self.name, self.queue, proximo))
                         self.try_connection(self.name + ' -release -var-X ' + self._host + ' ' +  str(self._port))
                         print('%s liberou o recurso' % self.name)
                         with self._lock:
                             self.okr = False
-                            #print('\n---> %s atualizei okr: %s' % (self.name, self.okr))
 
                                 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
