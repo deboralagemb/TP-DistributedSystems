@@ -8,6 +8,8 @@ import pickle
 duracao = 20
 socket.setdefaulttimeout(3)
 
+### .notify() não funciona.
+
 def port_in_use(port, obj):
     if port == "":
         return True
@@ -23,12 +25,13 @@ class Client:
         self._host = host
         self._port = port
         self._lock = threading.Lock()
+        self._condition = threading.Condition()
         self.requested = False
         self.queue = None  # Primeiro da fila = próxima execução.
         self.terminate = False
         self.okr = True
+    
 
-        
     def listen(self, event):
         
         #print(event.is_set(), self.terminate)
@@ -61,7 +64,7 @@ class Client:
                             self.okr = True
                             print('======= RECEBI UM OK! =========')
                             
-                        elif isinstance(msg, list):
+                        elif isinstance(msg, list):                            
                             if self.queue == None:  # Subscribe.
                                 self.queue = msg
                                 print('\n[%s]: Queue atualizada: ação subscribe %s' % (self.name, self.queue))
@@ -70,6 +73,12 @@ class Client:
                                 if msg[0] == '%pop%':
                                     self.queue.pop(0)
                                     print('\n[%s]: Queue atualizada: ação release %s' % (self.name, self.queue))
+                                    
+                                    with self._condition as cv:
+                                        print('Notifying...')
+                                        cv.notifyAll()  # Notifica que a queue foi atualizada (apenas quando há algum 'release').
+                                        print('Notified request thread')
+                                    
                                 else:               # Atualização na queue (próximo acquire recebido).
                                     self.queue.append(msg[0])
                                     print('\n[%s]: Queue atualizada: ação acquire %s' % (self.name, self.queue))
@@ -109,7 +118,7 @@ class Client:
                     except ConnectionRefusedError:
                         print("Connection refused on acquire.")
                 
-                elif self.queue != None and self.okr:  # Já deu subscribe.                    
+                elif self.queue != None and self.okr:  # Já deu subscribe.                
                     if len(self.queue) > 0:
                         proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
                         if proximo == self.name:
@@ -128,6 +137,11 @@ class Client:
                                 
                             except ConnectionRefusedError:
                                 print("Connection refused on release.")
+                        else:  # Não é a minha vez.
+                            with self._condition as cv:
+                                print('[%s] Waiting...' % self.name)
+                                cv.wait()
+                                print('[%s] Resuming...' % self.name)
                                 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -162,3 +176,50 @@ def port(port):
         return True
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', int(port))) == 0
+
+
+
+
+# =============================================================================
+# import threading
+# import time
+# import logging
+# 
+# logging.basicConfig(level=logging.DEBUG,
+#                     format='(%(threadName)-9s) %(message)s',)
+# 
+# def consumer(cv):
+#     logging.debug('Consumer thread started ...')
+#     with cv:
+#         logging.debug('Consumer waiting ...')
+#         cv.wait()
+#         logging.debug('Consumer consumed the resource')
+#         
+#     with cv:
+#         cv.wait()
+#         logging.debug('Consumer consumed the resource')
+#         
+# 
+# def producer(cv):
+#     logging.debug('Producer thread started ...')
+#     with cv:
+#         logging.debug('Making resource available')
+#         logging.debug('Notifying to all consumers')
+#         cv.notifyAll()
+#         
+#     time.sleep(2)
+#     with cv:
+#         cv.notifyAll()
+# 
+# if __name__ == '__main__':
+#     condition = threading.Condition()
+#     cs1 = threading.Thread(name='consumer1', target=consumer, args=(condition,))
+#     cs2 = threading.Thread(name='consumer2', target=consumer, args=(condition,))
+#     pd = threading.Thread(name='producer', target=producer, args=(condition,))
+# 
+#     cs1.start()
+#     time.sleep(2)
+#     cs2.start()
+#     time.sleep(2)
+#     pd.start()
+# =============================================================================
