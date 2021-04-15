@@ -155,7 +155,7 @@ class Broker:
         
         if action == '-acquire':
             if _id in self.queue:
-                print('>>> [ERRO] Acquire duplo')
+                print('\n-[WARNING] Acquire duplo')  # Agora irrelevante
             else:            
                 self.queue.append(_id)  # Põe o nome do cliente no fim da lista.
                 print(self.queue)                

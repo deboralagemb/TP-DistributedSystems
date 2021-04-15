@@ -5,6 +5,7 @@ import socket
 import types
 import threading
 import pickle
+import sys
 
 host = '127.0.0.1'
 port = 8080
@@ -13,9 +14,9 @@ selector_timeout = 3
 
 class Broker:
     
-    def __init__(self):
-        self.host = '127.0.0.1'
-        self.port = 8080  # 1-65535
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
         self.clients = {}
         self.queue = []
         self.count = 0
@@ -150,7 +151,7 @@ class Broker:
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         lsock.bind((self.host, self.port))
         lsock.listen()
-        print('listening on', (host, port))
+        print('listening on', (self.host, self.port))
         
         # Não bloqueará a execução.
         lsock.setblocking(False)
@@ -181,8 +182,11 @@ class Broker:
                 lsock.close()  # Libera a porta.
                 break
 
+inputHost = sys.argv[1]
+inputPort = sys.argv[2]
+
 if __name__ == "__main__":
-    broker = Broker()
+    broker = Broker(inputHost, int(inputPort))
     broker.start()
 
 
