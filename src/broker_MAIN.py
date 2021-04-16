@@ -146,8 +146,9 @@ class Broker:
         _id = msg[0]  # Nome do cliente.
         
         if msg[1] == 'exited':
-            self.clients.pop(_id)  # Retira o cliente do conjunto de clientes.
-            print('\n----------------\n%s saiu\n----------------' % _id)
+            if _id in self.clients:
+                self.clients.pop(_id)  # Retira o cliente do conjunto de clientes.
+                print('\n----------------\n%s saiu\n----------------' % _id)
             try:
                 self.queue.remove(_id)
             except ValueError:

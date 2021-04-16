@@ -137,8 +137,8 @@ class Client:
         event = threading.Event()
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             executor.submit(self.listen, event)  # Thread para escutar o broker.
-            # executor.submit(self.request, event)  # Thread para mandar mensagem para o broker.
-            # executor.submit(self.checkBroker, event)  # - Are you there?
+            executor.submit(self.request, event)  # Thread para mandar mensagem para o broker.
+            executor.submit(self.checkBroker, event)  # - Are you there?
 
             time.sleep(duracao)  # Tempo da aplicação.
             event.set()
@@ -146,8 +146,8 @@ class Client:
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
     executor.submit(Client('Débora', '127.0.0.1', 8081).start)
-    executor.submit(Client('Felipe', '127.0.0.1', 8082).start)
-    executor.submit(Client('Gabriel', '127.0.0.1', 8083).start)
+    # executor.submit(Client('Felipe', '127.0.0.1', 8082).start)
+    # executor.submit(Client('Gabriel', '127.0.0.1', 8083).start)
 
 
 # Util.
