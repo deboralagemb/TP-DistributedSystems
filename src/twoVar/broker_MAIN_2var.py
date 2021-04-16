@@ -97,13 +97,13 @@ class Broker:
 
     def resolveMsg(self, msg):
         msg = pickle.loads(msg)
+        print('mensagem que to recebendo: ', msg)
         if msg == None:
             return
 
         def nowIAmMainBroker():
             self._main = True
             self.sibling_is_dead = True
-            self.sendMessageToClients('', False, True)
             if "-var-X" in msg[2]:
                 self.sendMessageToClients('', False, self.queueVarX, True, True)
             elif "-var-Y" in msg[2]:
@@ -196,7 +196,11 @@ class Broker:
                 try:
                     s.connect((self.clients[__id]['host'], self.clients[__id]['port']))
                     var = (' -var-X' if isVarX else ' -var-Y')
-                    s.sendall(pickle.dumps(__msg + var))
+                    sendmsg = []
+                    sendmsg.append(var)
+                    sendmsg.append(__msg)
+                    s.sendall(pickle.dumps(sendmsg))
+                    # s.sendall(pickle.dumps(__msg + var))
                 except ConnectionRefusedError:
                     print('ERRO: Response not sent [%s: %s] 🤧' % (__id, __msg))
                     pass
@@ -207,7 +211,7 @@ class Broker:
             else:
                 queue.append(_id)  # Põe o nome do cliente no fim da lista.
                 print(queue)
-                self.sendMessageToClients(sub, True)
+                self.sendMessageToClients(sub, True, queue, isVarX, False)
 
         elif action == '-release':
             if len(queue) > 0:
@@ -218,7 +222,7 @@ class Broker:
                     respondClient(_id, 'okr')
 
                 else:
-                    print('>>> [ERRO] Release inválido. Requerente: %s | Próximo na fila: %s' % (_id, self.queue[0]))
+                    print('>>> [ERRO] Release inválido. Requerente: %s | Próximo na fila: %s' % (_id, queue[0]))
             else:
                 print('>>> [ERRO] Tentativa de release com queue vazia!')
 
