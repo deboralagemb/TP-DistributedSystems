@@ -100,20 +100,24 @@ class Broker:
         if msg == None:
             return
 
+        def nowIAmMainBroker():
+            self._main = True
+            self.sibling_is_dead = True
+            self.sendMessageToClients('', False, True)
+            if "-var-X" in msg[2]:
+                self.sendMessageToClients('', False, self.queueVarX, True, True)
+            elif "-var-Y" in msg[2]:
+                self.sendMessageToClients('', False, self.queueVarY, False, True)
+            else:
+                print('Variable does not exists')
+
         # ========== Tratando broker backup [INÍCIO] ========== #
 
         if not self._main:  # É backup.
             # print('I am a backup.')
             if msg == 'SOS':
                 print('I am now the main broker 👍')
-                self._main = True
-                self.sibling_is_dead = True
-                if "-var-X" in msg[2]:
-                    self.sendMessageToClients('', False, self.queueVarX, True, True)
-                elif "-var-Y" in msg[2]:
-                    self.sendMessageToClients('', False, self.queueVarY, False, True)
-                else:
-                    print('Variable does not exists')
+                nowIAmMainBroker()
 
             elif isinstance(msg,
                             list):  # Mensagem do broker principal. Os clientes só mandam strings. Broker só manda lista.
@@ -137,8 +141,8 @@ class Broker:
                         s.connect((self.sibling_broker['host'], self.sibling_broker['port']))
                         s.sendall(pickle.dumps(msg))
                     except ConnectionRefusedError:
-                        print(
-                            "Connection REFUSED on main BROKER. 😡😡😡 %s" % msg)  # Poderia virar principal aqui, sem precisar de mensagens dos clientes.
+                        print("Connection REFUSED on main BROKER. 😡😡😡 %s" % msg)  # Poderia virar principal aqui, sem precisar de mensagens dos clientes.
+                        nowIAmMainBroker()
             return
         elif msg == 'SOS':  # Todas as outras mensagens de aviso serão descartadas.
             return

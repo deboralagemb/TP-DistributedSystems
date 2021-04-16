@@ -87,15 +87,18 @@ class Broker:
         if msg == None:
             return
 
+        def nowIAmMainBroker():
+            self._main = True
+            self.sibling_is_dead = True
+            self.sendMessageToClients('', False, True)
+
         # ========== Tratando broker backup [INÍCIO] ========== #
 
         if not self._main:  # É backup.
             # print('I am a backup.')
             if msg == 'SOS':
                 print('I am now the main broker 👍')
-                self._main = True
-                self.sibling_is_dead = True
-                self.sendMessageToClients('', False, True)
+                nowIAmMainBroker()
 
             elif isinstance(msg,
                             list):  # Mensagem do broker principal. Os clientes só mandam strings. Broker só manda lista.
@@ -116,6 +119,7 @@ class Broker:
                     except ConnectionRefusedError:
                         print(
                             "Connection REFUSED on main BROKER. 😡😡😡 %s" % msg)  # Poderia virar principal aqui, sem precisar de mensagens dos clientes.
+                        nowIAmMainBroker()
             return
         elif msg == 'SOS':  # Todas as outras mensagens de aviso serão descartadas.
             return
