@@ -101,10 +101,11 @@ class Client:
                                     
                                 else:               # Atualização na queue (próximo acquire recebido).
                                     if msg[1]:
-                                        self.queueVarX.append(msg[1])
+                                        #todo AQUIII
+                                        self.queueVarX.extend(msg[1])
                                         print('\n[%s]: Queue X atualizada: ação acquire %s' % (self.name, self.queueVarX))
                                     else:
-                                        self.queueVarY.append(msg[3])
+                                        self.queueVarY.extend(msg[3])
                                         print('\n[%s]: Queue Y atualizada: ação acquire %s' % (self.name, self.queueVarY))
                                                             
                         else:
@@ -133,12 +134,12 @@ class Client:
                         
                         # Manda junto informação sobre a porta de escuta.
                         r = random.randrange(0, 10)
-                        # if r % 2:
-                        # self.wasLatestAcquireVarX = True
-                        # msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
-                        # else:
-                        self.wasLatestAcquireVarX = False
-                        msg = pickle.dumps(self.name + ' -acquire -var-Y %s %s' % (self._host, self._port))
+                        if r % 2:
+                            self.wasLatestAcquireVarX = True
+                            msg = pickle.dumps(self.name + ' -acquire -var-X %s %s' % (self._host, self._port))
+                        else:
+                            self.wasLatestAcquireVarX = False
+                            msg = pickle.dumps(self.name + ' -acquire -var-Y %s %s' % (self._host, self._port))
                         s.sendall(msg)
                         
                         print(self.name)
