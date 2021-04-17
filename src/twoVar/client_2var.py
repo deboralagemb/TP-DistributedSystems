@@ -66,7 +66,6 @@ class VariableContext(object):
             self.client.try_connection(self.client.name + ' -acquire %s %s %s' % (self.var_name,
                                                                                   self.client.host,
                                                                                   self.client.port), self)
-
         elif self.queue is not None and self.okr:  # Já deu subscribe.
             time.sleep(0.5)  # Pode ter casos em que o broker vá receber acquire corretamente mais levará mais que 0.5s para responder, o que irá gerar acquire duplo.
             if self.client.name not in self.queue:  # Tratando caso em que broker principal cai logo após receber acquire.
@@ -150,18 +149,32 @@ class Client:
         with self.lock:
             var.requested = True
 
+    # def try_connection(self, msg, var):
+    #     try:
+    #         self.connect_to_broker(self.broker[0], msg, var)
+    #     except ConnectionRefusedError:
+    #         print("Connection refused. Notifying backup broker ...")
+    #         if len(self.broker) > 1:
+    #             try:
+    #                 self.connect_to_broker(self.broker[1], msg, var)
+    #             except ConnectionRefusedError:
+    #                 print("Connection REFUSED 😡")
+    #         else:
+    #             print('There is no broker left. 😢')
+
     def try_connection(self, msg, var):
+        if len(self.broker) < 1:
+            print('There is no broker left. 😢')
+            return
+
         try:
-            self.connect_to_broker(self.broker[0], msg, var)
+            print('conectando ...')
+            self.connect_to_broker(self.broker[1], msg, var)
         except ConnectionRefusedError:
-            print("Connection refused. Notifying backup broker ...")
-            if len(self.broker) > 1:
-                try:
-                    self.connect_to_broker(self.broker[1], msg, var)
-                except ConnectionRefusedError:
-                    print("Connection REFUSED 😡")
-            else:
-                print('There is no broker left. 😢')
+            print("Connection REFUSED 😡 will try again later ...")
+
+        print('successful connection.')
+
 
     def request(self, event):
         # print("Entering request thread as %s" % self.name)
@@ -214,8 +227,8 @@ class Client:
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
     executor.submit(Client('Debora', '127.0.0.1', 8081).start)
-    # executor.submit(Client('Felipe', '127.0.0.1', 8082).start)
-    # executor.submit(Client('Gabriel', '127.0.0.1', 8083).start)
+    executor.submit(Client('Felipe', '127.0.0.1', 8082).start)
+    executor.submit(Client('Gabriel', '127.0.0.1', 8083).start)
 
 
 # Util.

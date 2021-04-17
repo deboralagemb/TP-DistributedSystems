@@ -61,8 +61,10 @@ class Broker:
                                 retorno = ['-var-X', [], '-var-Y', ['%pop%']]
                             retorno = pickle.dumps(retorno)
                     try:
+                        # print('tentando conexao: ', pickle.loads(retorno))
                         s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))
                         s.sendall(retorno)
+                        # print('conectou: ', pickle.loads(retorno))
                     except ConnectionRefusedError:
                         print("Connection REFUSED on:", client_name, end=' ')
                         print(pickle.loads(retorno))
@@ -243,6 +245,7 @@ class Broker:
                 # Append qualquer mensagem recebida na variável data.outb.
                 data.outb += recv_data
             else:
+                print('resolve msg')
                 self.resolveMsg(data.outb)
                 # data.outb = b''
 
