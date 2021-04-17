@@ -20,7 +20,7 @@ class Client:
     def __init__(self, name, host, port):
         self.name = name  # Único.
         self.broker = [{'host': '127.0.0.1', 'port': 8079},
-                       {'ip': '127.0.0.1', 'port': 8080}]  # Conectado ao BACKUP (:8079)
+                       {'host': '127.0.0.1', 'port': 8080}]  # Conectado ao BACKUP (:8079)
         self._host = host
         self._port = port
         self._lock = threading.Lock()
