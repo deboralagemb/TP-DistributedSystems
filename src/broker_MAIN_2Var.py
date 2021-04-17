@@ -97,9 +97,10 @@ class Broker:
         def nowIAmMainBroker():
             self._main = True
             self.sibling_is_dead = True
-            if "-var-X" in msg[2]:
+            splitmsg = msg.split()
+            if "-var-X" == splitmsg[2]:
                 self.sendMessageToClients('', False, self.queueVarX, True, True)
-            elif "-var-Y" in msg[2]:
+            elif "-var-Y" == splitmsg[2]:
                 self.sendMessageToClients('', False, self.queueVarY, False, True)
             else:
                 print('Variable does not exists')
