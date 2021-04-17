@@ -50,21 +50,19 @@ class Broker:
                     else:
                         if acq:
                             if isVarX:
-                                retorno = ['-var-X', ['%app%', self.queueVarX[-1]], '-var-Y', []]
+                                retorno = ['-var-X', ['%app%', self.queueVarX[-1]], '-var-Y', None]
                             else:
-                                retorno = ['-var-X', [], '-var-Y', ['%app%', self.queueVarY[-1]]]
+                                retorno = ['-var-X', None, '-var-Y', ['%app%', self.queueVarY[-1]]]
                             retorno = pickle.dumps(retorno)
                         else:
                             if isVarX:
-                                retorno = ['-var-X', ['%pop%'], '-var-Y', []]
+                                retorno = ['-var-X', ['%pop%'], '-var-Y', None]
                             else:
-                                retorno = ['-var-X', [], '-var-Y', ['%pop%']]
+                                retorno = ['-var-X', None, '-var-Y', ['%pop%']]
                             retorno = pickle.dumps(retorno)
                     try:
-                        # print('tentando conexao: ', pickle.loads(retorno))
                         s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))
                         s.sendall(retorno)
-                        # print('conectou: ', pickle.loads(retorno))
                     except ConnectionRefusedError:
                         print("Connection REFUSED on:", client_name, end=' ')
                         print(pickle.loads(retorno))
@@ -190,11 +188,9 @@ class Broker:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
                 try:
                     s.connect((self.clients[__id]['host'], self.clients[__id]['port']))
-                    var = (' -var-X' if isVarX else ' -var-Y')
+                    var = ('-var-X' if isVarX else '-var-Y')
                     sendmsg = [var, __msg]
-                    print("did i send okr")
                     s.sendall(pickle.dumps(sendmsg))
-                    # s.sendall(pickle.dumps(__msg + var))
                 except ConnectionRefusedError:
                     print('ERRO: Response not sent [%s: %s] 🤧' % (__id, __msg))
                     pass
@@ -211,10 +207,10 @@ class Broker:
             if len(queue) > 0:
                 if queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
                     queue.pop(0)
+                    print(queue)
                     self.sendMessageToClients(sub, False, queue, isVarX,
                                               False)  # (!) Antes de mandar o 'okr'. Como não há 'ok acquire', o cliente pode receber um 'okr' antes de receber um 'pop' e atualizar a sua queue, ocasioanndo erros de releases duplo.
                     respondClient(_id, 'okr')
-
                 else:
                     print('>>> [ERRO] Release inválido. Requerente: %s | Próximo na fila: %s' % (_id, queue[0]))
             else:

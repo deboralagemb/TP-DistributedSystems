@@ -33,13 +33,13 @@ class VariableContext(object):
         if len(msg) > 0:
             if msg[0] == '%pop%':
                 self.queue.pop(0)
-                print('\n[%s]: Queue atualizada: ação release %s' % (self.client.name, self.queue))
+                print('\n[%s]: Queue %s atualizada: ação release %s' % (self.client.name, self.var_name, self.queue))
             elif msg[0] == '%app%':  # Atualização na queue (próximo acquire recebido).
                 if self.queue is None:
                     self.queue = msg[1]
                 else:
                     self.queue.append(msg[1])
-                print('\n[%s]: Queue atualizada: ação acquire %s' % (self.client.name, self.queue))
+                print('\n[%s]: Queue %s atualizada: ação acquire %s' % (self.client.name, self.var_name, self.queue))
             else:
                 self.deal_with_queue(msg)
         else:
@@ -75,12 +75,11 @@ class VariableContext(object):
 
             if len(self.queue) > 0:
                 proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
-                print("to chegando aqui? : ", str(proximo == self.client.name))
                 if proximo == self.client.name:
                     time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
                     self.client.try_connection(
                         self.client.name + ' -release ' + self.var_name + ' ' + self.client.host + ' ' + str(self.client.port), self)
-                    print('%s liberou o recurso' % self.var_name)
+                    # print('%s liberou o recurso' % self.var_name)
                     with self.client.lock:
                         self.okr = False
 
@@ -122,7 +121,7 @@ class Client:
                 with conn:
                     data = conn.recv(4096)  # Recebe resposta do broker.
                     msg = pickle.loads(data)  # Recebe o array (queue) do Broker / mensagem de término.
-                    # print("====> recebemos: ", msg)
+                    print("====> recebemos: ", msg)
                     # todo thread para acquire/release ok?
                     # iterando de 2 em 2 pois a mensagem vem no seguinte formato
                     # ['-var-X', ['Débora'], '-var-Y', []]
@@ -136,9 +135,12 @@ class Client:
                         for var in self.variablesContext:
                             with self.lock:
                                 if var.var_name == msg[i]:
-                                    if 'okr' in msg[i + 1]:
+                                    print("caraio : ", str(msg[i]), " ", str(msg[i + 1]))
+                                    if None is msg[i + 1]:
+                                        print("veio none")
+                                    elif 'okr' in msg[i + 1]:
                                         var.handle_msg_okr()
-                                    elif isinstance(msg[i + 1], list) and len(msg[i + 1]) > 0:
+                                    elif isinstance(msg[i + 1], list):
                                         var.handle_update_queue(msg[i + 1])
                                     elif len(msg[i + 1]) > 0:
                                         print('ERRO 01: Mensagem inválida')
@@ -148,7 +150,6 @@ class Client:
         print("Closing listen thread.")
 
     def connect_to_broker(self, host, msg, var):
-        print("connect to broker: ", msg)
         self.send(host, msg)
         with self.lock:
             var.requested = True
