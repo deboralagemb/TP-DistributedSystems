@@ -46,7 +46,7 @@ class VariableContext(object):
             self.deal_with_queue(msg)
 
     def deal_with_queue(self, msg):
-        # print('\n[%s]: Queue atualizada: ' % self.client.name, end='')
+        print('\n[%s]: Queue atualizada: ' % self.client.name, end='')
         if self.queue is None:  # Subscribe.
             print('ação subscribe %s' % self.queue)
         else:
@@ -75,12 +75,12 @@ class VariableContext(object):
 
             if len(self.queue) > 0:
                 proximo = self.queue[0]  # Ex.: ['Débora', '-acquire', '-var-X']
+                print("to chegando aqui? : ", str(proximo == self.client.name))
                 if proximo == self.client.name:
                     time.sleep(random.uniform(0.2, 0.5))  # Faça algo com var-X
-
                     self.client.try_connection(
-                        self.client.name + ' -release %s ' + self.client.host + ' ' + str(self.client.port) % self.var_name, self)
-                    # print('%s liberou o recurso' % self.name)
+                        self.client.name + ' -release ' + self.var_name + ' ' + self.client.host + ' ' + str(self.client.port), self)
+                    print('%s liberou o recurso' % self.var_name)
                     with self.client.lock:
                         self.okr = False
 
@@ -127,7 +127,6 @@ class Client:
                     # iterando de 2 em 2 pois a mensagem vem no seguinte formato
                     # ['-var-X', ['Débora'], '-var-Y', []]
                     with self.lock:
-                        print('testando esse trecho ', str(msg))
                         for i in range(0, len(msg), 2):
                             if not msg[i] in self.variablesNames:
                                 self.variablesNames.append(msg[i])
@@ -149,12 +148,13 @@ class Client:
         print("Closing listen thread.")
 
     def connect_to_broker(self, host, msg, var):
-        print("connect to broker")
+        print("connect to broker: ", msg)
         self.send(host, msg)
         with self.lock:
             var.requested = True
 
     def try_connection(self, msg, var):
+        print("amadah")
         try:
             self.connect_to_broker(self.broker[0], msg, var)
         except ConnectionRefusedError:
@@ -204,7 +204,6 @@ class Client:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((host['host'], host['port']))
             msg = pickle.dumps(m)
-            print("send msg: ", m)
             s.sendall(msg)
 
     def checkBroker(self, event):
