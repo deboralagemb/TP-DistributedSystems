@@ -126,14 +126,15 @@ class Client:
                     # todo thread para acquire/release ok?
                     # iterando de 2 em 2 pois a mensagem vem no seguinte formato
                     # ['-var-X', ['Débora'], '-var-Y', []]
-                    with self.lock:
-                        for i in range(0, len(msg), 2):
-                            if not msg[i] in self.variablesNames:
-                                self.variablesNames.append(msg[i])
-                                queue = None if not msg[i + 1] else msg[i + 1]  # pega a fila se tiver, None se não tiver
-                                new_variable = VariableContext(self, msg[i], queue, True, False)
-                                self.variablesContext.append(new_variable)
-                            for var in self.variablesContext:
+
+                    for i in range(0, len(msg), 2):
+                        if not msg[i] in self.variablesNames:
+                            self.variablesNames.append(msg[i])
+                            queue = None if not msg[i + 1] else msg[i + 1]  # pega a fila se tiver, None se não tiver
+                            new_variable = VariableContext(self, msg[i], queue, True, False)
+                            self.variablesContext.append(new_variable)
+                        for var in self.variablesContext:
+                            with self.lock:
                                 if var.var_name == msg[i]:
                                     if 'okr' in msg[i + 1]:
                                         var.handle_msg_okr()
@@ -142,8 +143,7 @@ class Client:
                                     elif len(msg[i + 1]) > 0:
                                         print('ERRO 01: Mensagem inválida')
                                         raise NotImplementedError
-
-                    conn.close()
+                            conn.close()
 
         print("Closing listen thread.")
 
@@ -154,7 +154,6 @@ class Client:
             var.requested = True
 
     def try_connection(self, msg, var):
-        print("amadah")
         try:
             self.connect_to_broker(self.broker[0], msg, var)
         except ConnectionRefusedError:
