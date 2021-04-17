@@ -164,18 +164,6 @@ class Client:
             else:
                 print('There is no broker left. 😢')
 
-    # def try_connection(self, msg, var):
-    #     if len(self.broker) < 1:
-    #         print('There is no broker left. 😢')
-    #         return
-    #
-    #     try:
-    #         self.connect_to_broker(self.broker[1], msg, var)
-    #     except ConnectionRefusedError:
-    #         print("Connection REFUSED 😡 will try again later ...")
-    #
-    #     print('successful connection.')
-
 
     def request(self, event):
         # print("Entering request thread as %s" % self.name)

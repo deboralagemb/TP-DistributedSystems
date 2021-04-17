@@ -21,23 +21,23 @@ selector_timeout = 3
 class Broker:
 
     def __init__(self):
-        self.name = 'Main'
+        self.name = 'Backup'
         self.host = '127.0.0.1'
-        self.port = 8080  # 1-65535
-        self.clients = {'Backup': {'host': '127.0.0.1', 'port': 8079}}
+        self.port = 8079  # 1-65535
+        self.clients = {}  # Caso coloque este como principal, adicionar o backup como cliente.
         self.queue = []
         self.queueVarX = []
         self.queueVarY = []
         self.count = 0
         self._lock = threading.Lock()
-        self.sibling_broker = {'host': '127.0.0.1', 'port': 8079}
-        self._main = True  # True: Principal
+        self.sibling_broker = {'host': '127.0.0.1', 'port': 8080}
+        self._main = False  # False: Backup
         self.sibling_is_dead = False
         self.msg_to_backup = ['clients']
 
     def sendMessageToClients(self, sub, acq, queue, isVarX, toAll=False):
         with self._lock:  # Lock queue.
-            for client_name in self.clients:  # Manda a queue para todos os clientes.
+            for client_name in self.clients:  # Manda mensagem para todos os clientes.
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -50,19 +50,21 @@ class Broker:
                     else:
                         if acq:
                             if isVarX:
-                                retorno = ['-var-X', ['%app%', self.queueVarX[-1]], '-var-Y', None]
+                                retorno = ['-var-X', ['%app%', self.queueVarX[-1]], '-var-Y', []]
                             else:
-                                retorno = ['-var-X', None, '-var-Y', ['%app%', self.queueVarY[-1]]]
+                                retorno = ['-var-X', [], '-var-Y', ['%app%', self.queueVarY[-1]]]
                             retorno = pickle.dumps(retorno)
                         else:
                             if isVarX:
-                                retorno = ['-var-X', ['%pop%'], '-var-Y', None]
+                                retorno = ['-var-X', ['%pop%'], '-var-Y', []]
                             else:
-                                retorno = ['-var-X', None, '-var-Y', ['%pop%']]
+                                retorno = ['-var-X', [], '-var-Y', ['%pop%']]
                             retorno = pickle.dumps(retorno)
                     try:
+                        # print('tentando conexao: ', pickle.loads(retorno))
                         s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))
                         s.sendall(retorno)
+                        # print('conectou: ', pickle.loads(retorno))
                     except ConnectionRefusedError:
                         print("Connection REFUSED on:", client_name, end=' ')
                         print(pickle.loads(retorno))
@@ -90,6 +92,7 @@ class Broker:
             print('Queue atualizada %s' % queue)
 
     def resolveMsg(self, msg):
+
         msg = pickle.loads(msg)
         if msg is None:
             return
@@ -112,6 +115,7 @@ class Broker:
                 print('I am now the main broker 👍')
                 nowIAmMainBroker()
 
+
             elif isinstance(msg,
                             list):  # Mensagem do broker principal. Os clientes só mandam strings. Broker só manda lista.
                 if msg[0] == 'clients':
@@ -125,6 +129,7 @@ class Broker:
                         self.update_queue(msg, self.queueVarY)
                     else:
                         print('Variable does not exists')
+
 
             else:  # Encaminha a mensagem para o broker principal.
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -176,6 +181,7 @@ class Broker:
                 self.sendClientListToBackup()
 
         action = msg[1]
+
         if "-var-X" in msg[2]:
             self.try_acquire(self.queueVarX, action, _id, sub, True)
         elif "-var-Y" in msg[2]:
@@ -188,9 +194,11 @@ class Broker:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
                 try:
                     s.connect((self.clients[__id]['host'], self.clients[__id]['port']))
-                    var = ('-var-X' if isVarX else '-var-Y')
+                    var = (' -var-X' if isVarX else ' -var-Y')
                     sendmsg = [var, __msg]
+                    print("did i send okr")
                     s.sendall(pickle.dumps(sendmsg))
+                    # s.sendall(pickle.dumps(__msg + var))
                 except ConnectionRefusedError:
                     print('ERRO: Response not sent [%s: %s] 🤧' % (__id, __msg))
                     pass
@@ -207,10 +215,10 @@ class Broker:
             if len(queue) > 0:
                 if queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
                     queue.pop(0)
-                    print(queue)
                     self.sendMessageToClients(sub, False, queue, isVarX,
                                               False)  # (!) Antes de mandar o 'okr'. Como não há 'ok acquire', o cliente pode receber um 'okr' antes de receber um 'pop' e atualizar a sua queue, ocasioanndo erros de releases duplo.
                     respondClient(_id, 'okr')
+
                 else:
                     print('>>> [ERRO] Release inválido. Requerente: %s | Próximo na fila: %s' % (_id, queue[0]))
             else:
@@ -242,7 +250,9 @@ class Broker:
             else:
                 self.resolveMsg(data.outb)
                 # data.outb = b''
+
                 # print('closing connection to', data.addr)
+
                 # O socket não é mais monitorado pelo select().
                 self.sel.unregister(sock)
                 sock.close()
@@ -297,10 +307,10 @@ if __name__ == "__main__":
     except Exception:
         traceback.print_exc()
         # Caso a porta não esteja liberada por um erro do programa:
-        from psutil import process_iter
+        from psutil import process_iter  ### @todo pip install psutil, caso não tenha instalado.
         from signal import SIGTERM  # or SIGKILL
 
         for proc in process_iter():
             for conns in proc.connections(kind='inet'):
-                if conns.laddr.port == 8080:  # qualquer porta
+                if conns.laddr.port == 8079:  # qualquer porta
                     proc.send_signal(SIGTERM)  # or SIGKILL

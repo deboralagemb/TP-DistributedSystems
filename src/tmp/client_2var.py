@@ -151,30 +151,18 @@ class Client:
         with self.lock:
             var.requested = True
 
+
     def try_connection(self, msg, var):
+        if len(self.broker) < 1:
+            print('There is no broker left. 😢')
+            return
         try:
+            print('conectando ...')
             self.connect_to_broker(self.broker[0], msg, var)
         except ConnectionRefusedError:
-            print("Connection refused. Notifying backup broker ...")
-            if len(self.broker) > 1:
-                try:
-                    self.connect_to_broker(self.broker[1], msg, var)
-                except ConnectionRefusedError:
-                    print("Connection REFUSED 😡")
-            else:
-                print('There is no broker left. 😢')
+            print("Connection REFUSED 😡 will try again later ...")
 
-    # def try_connection(self, msg, var):
-    #     if len(self.broker) < 1:
-    #         print('There is no broker left. 😢')
-    #         return
-    #
-    #     try:
-    #         self.connect_to_broker(self.broker[1], msg, var)
-    #     except ConnectionRefusedError:
-    #         print("Connection REFUSED 😡 will try again later ...")
-    #
-    #     print('successful connection.')
+        print('successful connection.')
 
 
     def request(self, event):
@@ -227,10 +215,9 @@ class Client:
 
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-    executor.submit(Client('Debora', '127.0.0.1', 8081).start)
-    executor.submit(Client('Felipe', '127.0.0.1', 8082).start)
-    executor.submit(Client('Gabriel', '127.0.0.1', 8083).start)
-
+    executor.submit( Client('Midoriya', '127.0.0.1', 8084).start )
+    executor.submit( Client('Boa_Hancock', '127.0.0.1', 8085).start )
+    executor.submit( Client('Edward_Elric', '127.0.0.1', 8086).start )
 # Util.
 
 def port(port):
