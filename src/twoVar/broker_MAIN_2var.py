@@ -44,28 +44,22 @@ class Broker:
                     retorno = b''
                     if client_name == sub or toAll:  # Subscribing.
                         # QUEUE AQUI: ['Midoriya', 'Hisoka', 'Boa_Hancock'] - preciso saber qual queue é de qual
-                        retorno = ['-var-X']
-                        retorno.append(self.queueVarX)
-                        retorno.append('-var-Y')
-                        retorno.append(self.queueVarY)
+                        retorno = ['-var-X', self.queueVarX, '-var-Y', self.queueVarY]
                         retorno = pickle.dumps(retorno)  # Manda o array todo.
                         print('%s SUBSCRIBED!' % client_name)
                     else:
                         if acq:
                             if isVarX:
-                                retorno = ['-var-X']
-                                retorno.append(['%app%', self.queueVarX[-1]])
-                                retorno.append('-var-Y')
-                                retorno.append([])
+                                retorno = ['-var-X', ['%app%', self.queueVarX[-1]], '-var-Y', []]
                             else:
-                                retorno = ['-var-X']
-                                retorno.append([])
-                                retorno = ['-var-Y']
-                                retorno.append(['%app%', self.queueVarY[-1]])
+                                retorno = ['-var-X', [], '-var-Y', ['%app%', self.queueVarY[-1]]]
                             retorno = pickle.dumps(retorno)
                         else:
-                            # por lista
-                            retorno = pickle.dumps(['%pop%'])
+                            if isVarX:
+                                retorno = ['-var-X', ['%pop%'], '-var-Y', []]
+                            else:
+                                retorno = ['-var-X', [], '-var-Y', ['%pop%']]
+                            retorno = pickle.dumps(retorno)
                     try:
                         s.connect((self.clients[client_name]['host'], self.clients[client_name]['port']))
                         s.sendall(retorno)
@@ -98,7 +92,7 @@ class Broker:
     def resolveMsg(self, msg):
         msg = pickle.loads(msg)
         print('mensagem que to recebendo: ', msg)
-        if msg == None:
+        if msg is None:
             return
 
         def nowIAmMainBroker():
@@ -123,7 +117,6 @@ class Broker:
                             list):  # Mensagem do broker principal. Os clientes só mandam strings. Broker só manda lista.
                 if msg[0] == 'clients':
                     self.clients = msg[1]
-                    # print(msg[1])
                     print('\nAtualizei minha lista de clientes.')
                 else:
                     print('\natualizando minha queue %s' % msg)
@@ -141,7 +134,8 @@ class Broker:
                         s.connect((self.sibling_broker['host'], self.sibling_broker['port']))
                         s.sendall(pickle.dumps(msg))
                     except ConnectionRefusedError:
-                        print("Connection REFUSED on main BROKER. 😡😡😡 %s" % msg)  # Poderia virar principal aqui, sem precisar de mensagens dos clientes.
+                        print(
+                            "Connection REFUSED on main BROKER. 😡😡😡 %s" % msg)  # Poderia virar principal aqui, sem precisar de mensagens dos clientes.
                         nowIAmMainBroker()
             return
         elif msg == 'SOS':  # Todas as outras mensagens de aviso serão descartadas.
@@ -152,7 +146,8 @@ class Broker:
         with self._lock:
             self.count += 1
 
-        if isinstance(msg, list):  # Mensagem do principal recebida após o backup receber mensagem para se tornar principal.
+        if isinstance(msg,
+                      list):  # Mensagem do principal recebida após o backup receber mensagem para se tornar principal.
             return
 
         msg = msg.split()  # Ex.: ['Débora', '-acquire', '-var-X', '127.0.0.1', '8080']
@@ -189,16 +184,14 @@ class Broker:
         else:
             print('Variable does not exists')
 
-
     def try_acquire(self, queue, action, _id, sub, isVarX):
         def respondClient(__id, __msg):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
                 try:
                     s.connect((self.clients[__id]['host'], self.clients[__id]['port']))
                     var = (' -var-X' if isVarX else ' -var-Y')
-                    sendmsg = []
-                    sendmsg.append(var)
-                    sendmsg.append(__msg)
+                    sendmsg = [var, __msg]
+                    print("did i send okr")
                     s.sendall(pickle.dumps(sendmsg))
                     # s.sendall(pickle.dumps(__msg + var))
                 except ConnectionRefusedError:
@@ -217,8 +210,8 @@ class Broker:
             if len(queue) > 0:
                 if queue[0] == _id:  # -> Quem ta dando -release é quem está com o recurso?
                     queue.pop(0)
-                    print(queue)
-                    self.sendMessageToClients(sub, False, queue, isVarX, False) # (!) Antes de mandar o 'okr'. Como não há 'ok acquire', o cliente pode receber um 'okr' antes de receber um 'pop' e atualizar a sua queue, ocasioanndo erros de releases duplo.
+                    self.sendMessageToClients(sub, False, queue, isVarX,
+                                              False)  # (!) Antes de mandar o 'okr'. Como não há 'ok acquire', o cliente pode receber um 'okr' antes de receber um 'pop' e atualizar a sua queue, ocasioanndo erros de releases duplo.
                     respondClient(_id, 'okr')
 
                 else:
