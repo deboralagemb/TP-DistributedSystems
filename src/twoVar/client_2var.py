@@ -46,7 +46,7 @@ class VariableContext(object):
             self.deal_with_queue(msg)
 
     def deal_with_queue(self, msg):
-        print('\n[%s]: Queue atualizada: ' % self.client.name, end='')
+        # print('\n[%s]: Queue atualizada: ' % self.client.name, end='')
         if self.queue is None:  # Subscribe.
             print('ação subscribe %s' % self.queue)
         else:
@@ -122,58 +122,62 @@ class Client:
                 with conn:
                     data = conn.recv(4096)  # Recebe resposta do broker.
                     msg = pickle.loads(data)  # Recebe o array (queue) do Broker / mensagem de término.
-                    print("====> recebemos: ", msg)
+                    # print("====> recebemos: ", msg)
                     # todo thread para acquire/release ok?
                     # iterando de 2 em 2 pois a mensagem vem no seguinte formato
                     # ['-var-X', ['Débora'], '-var-Y', []]
-                    for i in range(0, len(msg), 2):
-                        if not msg[i] in self.variablesNames:
-                            self.variablesNames.append(msg[i])
-                            queue = None if not msg[i + 1] else msg[i + 1]  # pega a fila se tiver, None se não tiver
-                            new_variable = VariableContext(self, msg[i], queue, True, False)
-                            self.variablesContext.append(new_variable)
-                        else:
+                    with self.lock:
+                        print('testando esse trecho ', str(msg))
+                        for i in range(0, len(msg), 2):
+                            if not msg[i] in self.variablesNames:
+                                self.variablesNames.append(msg[i])
+                                queue = None if not msg[i + 1] else msg[i + 1]  # pega a fila se tiver, None se não tiver
+                                new_variable = VariableContext(self, msg[i], queue, True, False)
+                                self.variablesContext.append(new_variable)
                             for var in self.variablesContext:
                                 if var.var_name == msg[i]:
                                     if 'okr' in msg[i + 1]:
                                         var.handle_msg_okr()
-                                    elif isinstance(msg[i + 1], list):
+                                    elif isinstance(msg[i + 1], list) and len(msg[i + 1]) > 0:
                                         var.handle_update_queue(msg[i + 1])
+                                    elif len(msg[i + 1]) > 0:
+                                        print('ERRO 01: Mensagem inválida')
+                                        raise NotImplementedError
 
                     conn.close()
 
         print("Closing listen thread.")
 
     def connect_to_broker(self, host, msg, var):
+        print("connect to broker")
         self.send(host, msg)
         with self.lock:
             var.requested = True
 
-    # def try_connection(self, msg, var):
-    #     try:
-    #         self.connect_to_broker(self.broker[0], msg, var)
-    #     except ConnectionRefusedError:
-    #         print("Connection refused. Notifying backup broker ...")
-    #         if len(self.broker) > 1:
-    #             try:
-    #                 self.connect_to_broker(self.broker[1], msg, var)
-    #             except ConnectionRefusedError:
-    #                 print("Connection REFUSED 😡")
-    #         else:
-    #             print('There is no broker left. 😢')
-
     def try_connection(self, msg, var):
-        if len(self.broker) < 1:
-            print('There is no broker left. 😢')
-            return
-
         try:
-            print('conectando ...')
-            self.connect_to_broker(self.broker[1], msg, var)
+            self.connect_to_broker(self.broker[0], msg, var)
         except ConnectionRefusedError:
-            print("Connection REFUSED 😡 will try again later ...")
+            print("Connection refused. Notifying backup broker ...")
+            if len(self.broker) > 1:
+                try:
+                    self.connect_to_broker(self.broker[1], msg, var)
+                except ConnectionRefusedError:
+                    print("Connection REFUSED 😡")
+            else:
+                print('There is no broker left. 😢')
 
-        print('successful connection.')
+    # def try_connection(self, msg, var):
+    #     if len(self.broker) < 1:
+    #         print('There is no broker left. 😢')
+    #         return
+    #
+    #     try:
+    #         self.connect_to_broker(self.broker[1], msg, var)
+    #     except ConnectionRefusedError:
+    #         print("Connection REFUSED 😡 will try again later ...")
+    #
+    #     print('successful connection.')
 
 
     def request(self, event):
@@ -200,6 +204,7 @@ class Client:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((host['host'], host['port']))
             msg = pickle.dumps(m)
+            print("send msg: ", m)
             s.sendall(msg)
 
     def checkBroker(self, event):
@@ -227,8 +232,8 @@ class Client:
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
     executor.submit(Client('Debora', '127.0.0.1', 8081).start)
-    executor.submit(Client('Felipe', '127.0.0.1', 8082).start)
-    executor.submit(Client('Gabriel', '127.0.0.1', 8083).start)
+    # executor.submit(Client('Felipe', '127.0.0.1', 8082).start)
+    # executor.submit(Client('Gabriel', '127.0.0.1', 8083).start)
 
 
 # Util.

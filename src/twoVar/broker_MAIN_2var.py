@@ -93,7 +93,6 @@ class Broker:
 
     def resolveMsg(self, msg):
         msg = pickle.loads(msg)
-        print('mensagem que to recebendo: ', msg)
         if msg is None:
             return
 
@@ -245,12 +244,9 @@ class Broker:
                 # Append qualquer mensagem recebida na variável data.outb.
                 data.outb += recv_data
             else:
-                print('resolve msg')
                 self.resolveMsg(data.outb)
                 # data.outb = b''
-
                 # print('closing connection to', data.addr)
-
                 # O socket não é mais monitorado pelo select().
                 self.sel.unregister(sock)
                 sock.close()

@@ -94,7 +94,7 @@ class Broker:
     def resolveMsg(self, msg):
 
         msg = pickle.loads(msg)
-        if msg == None:
+        if msg is None:
             return
 
         def nowIAmMainBroker():
@@ -117,7 +117,6 @@ class Broker:
 
 
             elif isinstance(msg,
-
                             list):  # Mensagem do broker principal. Os clientes só mandam strings. Broker só manda lista.
                 if msg[0] == 'clients':
                     self.clients = msg[1]
@@ -139,7 +138,8 @@ class Broker:
                         s.connect((self.sibling_broker['host'], self.sibling_broker['port']))
                         s.sendall(pickle.dumps(msg))
                     except ConnectionRefusedError:
-                        print("Connection REFUSED on main BROKER. 😡😡😡 %s" % msg)  # Poderia virar principal aqui, sem precisar de mensagens dos clientes.
+                        print(
+                            "Connection REFUSED on main BROKER. 😡😡😡 %s" % msg)  # Poderia virar principal aqui, sem precisar de mensagens dos clientes.
                         nowIAmMainBroker()
             return
         elif msg == 'SOS':  # Todas as outras mensagens de aviso serão descartadas.
@@ -189,7 +189,6 @@ class Broker:
         else:
             print('Variable does not exists')
 
-
     def try_acquire(self, queue, action, _id, sub, isVarX):
         def respondClient(__id, __msg):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:  # Release recebido.
@@ -224,7 +223,6 @@ class Broker:
                     print('>>> [ERRO] Release inválido. Requerente: %s | Próximo na fila: %s' % (_id, queue[0]))
             else:
                 print('>>> [ERRO] Tentativa de release com queue vazia!')
-
 
     def accept_wrapper(self, sock):
         conn, addr = sock.accept()  # Está pronto para receber informação.
