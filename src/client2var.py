@@ -23,10 +23,12 @@ class VariableContext(object):
         self.queue = queue
         self.okr = okr
         self.requested = requested
+        
 
     def handle_msg_okr(self):
         self.requested = False
         self.okr = True
+        
 
     def handle_update_queue(self, msg):
         if len(msg) > 0:
@@ -43,6 +45,7 @@ class VariableContext(object):
                 self.deal_with_queue(msg)
         else:
             self.deal_with_queue(msg)
+            
 
     def deal_with_queue(self, msg):
         print('\n[%s]: Queue atualizada: ' % self.client.name, end='')
@@ -57,6 +60,7 @@ class VariableContext(object):
         self.okr = True  # Caso seja sincronização com o backup e o cliente tenha mandado mensagem de release para o principal não lida.
         if self.client.name in self.queue:
             self.requested = True
+    
 
     def handle_use_variable(self):
         if not self.requested:  # Se já não mandou um 'acquire'.
@@ -83,34 +87,36 @@ class VariableContext(object):
                         self.okr = False
 
 
-# cada variável tem sua queue
-# seu okr
-# seu requested
+"""
+Cada variável tem sua queue, 
+seu okr,
+seu requested.
 
-# Primeiro passo: escutar requisições do broker
-# Segundo passo: identificar as variáveis do broker e criar Clients
+Primeiro passo: escutar requisições do broker
+Segundo passo: identificar as variáveis do broker e criar Clients
+"""
 
 class Client:
     def __init__(self, name, host, port):
         self.name = name  # Único.
-        self.broker = [{'host': '127.0.0.1', 'port': 8079},
-                       {'host': '127.0.0.1', 'port': 8080}]  # Conectado ao BACKUP (:8079)
+        self.broker = [{'host': '127.0.0.1', 'port': 8080},
+                       {'host': '127.0.0.1', 'port': 8079}]  # Conectado ao PRINCIPAL (:8080)
         self.host = host
         self.port = port
         self.lock = threading.Lock()
         self.variablesContext = []
         self.variablesNames = []
-        self.terminate = False
+        
 
     def listen(self, event):
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            print("Listening on [%s:%s]" % (self.host, self.port))
+            print("\nListening on [%s:%s]" % (self.host, self.port))
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.host, self.port))
             s.listen()
 
-            while not event.is_set() and not self.terminate:  # Tempo da main thread / mensagem de término do broker.
+            while not event.is_set():  # Tempo da main thread / mensagem de término do broker.
                 conn, addr = None, None
                 try:
                     conn, addr = s.accept()  # (!) Bloqueia a execução!
@@ -130,6 +136,7 @@ class Client:
                             queue = None if not msg[i + 1] else msg[i + 1]  # pega a fila se tiver, None se não tiver
                             new_variable = VariableContext(self, msg[i], queue, True, False)
                             self.variablesContext.append(new_variable)
+                            
                         for var in self.variablesContext:
                             with self.lock:
                                 if var.var_name == msg[i]:
@@ -142,14 +149,15 @@ class Client:
                                     elif len(msg[i + 1]) > 0:
                                         print('ERRO 01: Mensagem inválida')
                                         raise NotImplementedError
-                            conn.close()
 
         print("Closing listen thread.")
+        
 
     def connect_to_broker(self, host, msg, var):
         self.send(host, msg)
         with self.lock:
             var.requested = True
+            
 
     def try_connection(self, msg, var):
         try:
@@ -167,7 +175,7 @@ class Client:
 
     def request(self, event):
         # print("Entering request thread as %s" % self.name)
-        while not event.is_set() and not self.terminate:
+        while not event.is_set():
             # todo thread para esse caso
             if not self.variablesContext:
                 self.variablesNames.append('-var-X')
@@ -181,17 +189,19 @@ class Client:
             print("[%s] Closing request thread." % self.name)
             s.connect((self.broker[0]['host'], self.broker[0]['port']))
             s.sendall(pickle.dumps('%s exited' % self.name))  # Manda mensagem final.
-
+            
             for var in self.variablesContext:
                 var.queue = None
+                
 
     def send(self, host, m):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((host['host'], host['port']))
             msg = pickle.dumps(m)
             s.sendall(msg)
+            
 
-    def checkBroker(self, event):
+    def check_broker(self, event):
         while not event.is_set():
             time.sleep(1.5)
             try:
@@ -202,27 +212,20 @@ class Client:
                 time.sleep(0.25)
                 self.broker.pop(0)
                 break
+        
 
     def start(self):
         event = threading.Event()
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executorClient:
             executorClient.submit(self.listen, event)  # Thread para escutar o broker.
             executorClient.submit(self.request, event)  # Thread para mandar mensagem para o broker.
-            executorClient.submit(self.checkBroker, event)  # - Are you there?
+            executorClient.submit(self.check_broker, event)  # - Are you there?
 
             time.sleep(duracao)  # Tempo da aplicação.
             event.set()
 
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-    executor.submit(Client('Debora', '127.0.0.1', 8081).start)
-    executor.submit(Client('Felipe', '127.0.0.1', 8082).start)
-    executor.submit(Client('Gabriel', '127.0.0.1', 8083).start)
-
-# Util.
-
-def port(port):
-    if port == "":
-        return True
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', int(port))) == 0
+    executor.submit( Client('Debora', '127.0.0.1', 8081).start )
+    executor.submit( Client('Felipe', '127.0.0.1', 8082).start )
+    executor.submit( Client('Gabriel', '127.0.0.1', 8083).start )
