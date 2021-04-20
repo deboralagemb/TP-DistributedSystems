@@ -4,6 +4,7 @@ import socket
 import time
 import random
 import pickle
+import sys
 
 duracao = 40
 socket.setdefaulttimeout(3)
@@ -97,12 +98,12 @@ Segundo passo: identificar as variáveis do broker e criar Clients
 """
 
 class Client:
-    def __init__(self, name, host, port):
+    def __init__(self, name, client_host, client_port, broker_host, broker_port, backup_host, backup_port):
         self.name = name  # Único.
-        self.broker = [{'host': '127.0.0.1', 'port': 8079},
-                       {'host': '127.0.0.1', 'port': 8080}]  # Conectado ao BACKUP (:8079)
-        self.host = host
-        self.port = port
+        self.broker = [{'host': broker_host, 'port': broker_port},
+                       {'host': backup_host, 'port': backup_port}]  # Conectado ao BACKUP (:8079)
+        self.host = client_host
+        self.port = client_port
         self.lock = threading.Lock()
         self.variablesContext = []
         self.variablesNames = []
@@ -225,7 +226,17 @@ class Client:
             event.set()
 
 
+client_host_ = sys.argv[1]
+broker_host_ = sys.argv[2]
+broker_port_ = sys.argv[3]
+backup_host_ = sys.argv[4]
+backup_port_ = sys.argv[5]
+
+
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-    executor.submit( Client('Midoriya', '127.0.0.1', 8084).start )
-    executor.submit( Client('Boa_Hancock', '127.0.0.1', 8085).start )
-    executor.submit( Client('Edward_Elric', '127.0.0.1', 8086).start )
+    executor.submit( Client('Midoriya', client_host_, 8084,
+                            broker_host_, int(broker_port_), backup_host_, int(backup_port_)).start )
+    executor.submit( Client('Boa_Hancock', client_host_, 8085,
+                            broker_host_, int(broker_port_), backup_host_, int(backup_port_)).start )
+    executor.submit( Client('Edward_Elric', client_host_, 8086,
+                            broker_host_, int(broker_port_), backup_host_, int(backup_port_)).start )

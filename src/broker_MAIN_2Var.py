@@ -6,6 +6,7 @@ import types
 import threading
 import pickle
 import traceback
+import sys
 from copy import deepcopy
 
 selector_timeout = 3
@@ -21,17 +22,17 @@ O broker que virou pricipal inicialmente manda a queue inteira para todos os cli
 
 class Broker:
 
-    def __init__(self):
+    def __init__(self, host, port, backup_host, backup_port):
         self.name = 'Main'
-        self.host = '127.0.0.1'
-        self.port = 8080  # 1-65535
-        self.clients = {'Backup': {'host': '127.0.0.1', 'port': 8079}}
+        self.host = host
+        self.port = port  # 1-65535
+        self.clients = {'Backup': {'host': backup_host, 'port': backup_port}}
         self.queue = []
         self.queue_var_X = []
         self.queue_var_Y = []
         self.count = 0
         self._lock = threading.Lock()
-        self.sibling_broker = {'host': '127.0.0.1', 'port': 8079}  # Broker backup
+        self.sibling_broker = {'host': backup_host, 'port': backup_port}  # Broker backup
         self._main = True  # True: Principal
         self.sibling_is_dead = False
         self.msg_to_backup = ['clients']
@@ -303,9 +304,15 @@ class Broker:
                 break
 
 
+input_host_ = sys.argv[1]
+input_port_ = sys.argv[2]
+backup_host_ = sys.argv[3]
+backup_port_ = sys.argv[4]
+
+
 if __name__ == "__main__":
     try:
-        broker = Broker()
+        broker = Broker(input_host_, int(input_port_), backup_host_, int(backup_port_))
         print('Sou o broker PRINCIPAL!\n') if broker._main else print('Sou o broker BACKUP!\n')
         broker.start()
     except Exception:
