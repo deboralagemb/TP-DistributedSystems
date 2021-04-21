@@ -1,4 +1,4 @@
-# BCC362TP2-python
+# BCC362TP2-python (Sistemas Distribuídos)
 
 Esse repositório contém arquivos para colocar em prática os conceitos que estudamos na disciplina BCC362 (Sistemas Distribuídos) na UFOP.
 Trata-se de simular o funcionamento de broker com clientes pub/sub.
