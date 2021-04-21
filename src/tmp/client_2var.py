@@ -226,17 +226,17 @@ class Client:
             event.set()
 
 
-client_host_ = sys.argv[1]
-broker_host_ = sys.argv[2]
-broker_port_ = sys.argv[3]
-backup_host_ = sys.argv[4]
-backup_port_ = sys.argv[5]
-
+client_append_name = sys.argv[1]
+client_host_ = sys.argv[2]
+broker_host_ = sys.argv[3]
+broker_port_ = sys.argv[4]
+backup_host_ = sys.argv[5]
+backup_port_ = sys.argv[6]
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-    executor.submit( Client('Midoriya', client_host_, 8084,
+    executor.submit( Client(client_append_name+'_Midoriya', client_host_, 8084,
                             broker_host_, int(broker_port_), backup_host_, int(backup_port_)).start )
-    executor.submit( Client('Boa_Hancock', client_host_, 8085,
+    executor.submit( Client(client_append_name+'_Boa_Hancock', client_host_, 8085,
                             broker_host_, int(broker_port_), backup_host_, int(backup_port_)).start )
-    executor.submit( Client('Edward_Elric', client_host_, 8086,
+    executor.submit( Client(client_append_name+'_Edward_Elric', client_host_, 8086,
                             broker_host_, int(broker_port_), backup_host_, int(backup_port_)).start )
